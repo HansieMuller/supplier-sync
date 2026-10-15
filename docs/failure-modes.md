@@ -7,8 +7,8 @@ Run `bin/rails test` for behavior tests; they use actual PostgreSQL and a loopba
 | Catalogue pagination, interruption and checkpoint resume | `test/models/integration_test.rb`: catalogue pages; page checkpoint survives interruption |
 | Repeated/invalid cursor | Same file: page checkpoint rejects repeated/URL cursors |
 | Terminal pages 49/50 and unfinished page 51 at the finite cap | `test/models/catalogue_sync_test.rb`: real HTTP feed through ordinary job claims/completion |
-| Same key, changed payload before and after acceptance | Same file: same-key conflict; identity retained after rejection |
-| HTTP 422 versus 429/503; Retry-After dates, malformed and excessive values | Same file + `test/models/operations_test.rb`: validation, scheduling, parsing and exhaustion |
+| Same key, changed payload before and after acceptance | `test/models/integration_test.rb`: same-key conflict; identity retained after rejection |
+| HTTP 422 versus 429/503; Retry-After dates, malformed and excessive values | `integration_test.rb` + `test/models/operations_test.rb`: validation, scheduling, parsing and exhaustion |
 | Business changes and outbox rollback; another session cannot see uncommitted data | `operations_test.rb`: rollback and other-session visibility |
 | Competing dispatchers and workers | `CompetingTransactionsTest`: one claim and one attempt |
 | 200 active / 50 outstanding / 100 queued race boundaries | Same class: admission, outstanding claims, atomic Redis capacity |
