@@ -3,6 +3,8 @@ namespace :demo do
   task reset: :environment do
     abort "Development/test only" unless Rails.env.development? || Rails.env.test?
     SupplierClient.new.request("POST", "/reset", {})
+    Attempt.delete_all
+    Operation.delete_all
     PurchaseOrder.delete_all
     CatalogueSync.delete_all
     Product.delete_all

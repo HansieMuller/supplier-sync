@@ -1,6 +1,14 @@
 class CatalogueSync < ApplicationRecord
+  def self.schedule!
+    transaction do
+      sync = create!
+      Operation.admit!(kind: "catalogue_sync", catalogue_sync: sync)
+      sync
+    end
+  end
+
   # Commit one validated page and its checkpoint together. Interrupted runs resume that cursor.
-  def run!(client: SupplierClient.new)
+  def run!(client: SupplierClient.new, guard: nil)
     50.times do
       return if state == "completed"
       page = client.catalogue(cursor)
@@ -11,6 +19,7 @@ class CatalogueSync < ApplicationRecord
         raise SupplierClient::Permanent, "invalid_cursor"
       end
       transaction do
+        guard&.call
         items.each do |item|
           raise SupplierClient::Permanent, "invalid_product" unless item.is_a?(Hash) && item["price"].is_a?(String) && item["price"].match?(/\A[0-9]{1,10}\.[0-9]{2}\z/)
           product = Product.find_or_initialize_by(sku: item.fetch("sku"))

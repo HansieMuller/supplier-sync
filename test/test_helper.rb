@@ -1,4 +1,5 @@
 ENV["RAILS_ENV"] ||= "test"
+ENV["REDIS_URL"] ||= "redis://127.0.0.1:6379/13"
 require_relative "../config/environment"
 require "rails/test_help"
 require "rack/test"

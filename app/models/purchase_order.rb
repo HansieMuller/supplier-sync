@@ -9,8 +9,12 @@ class PurchaseOrder < ApplicationRecord
     raise ArgumentError, "Unknown scenario" unless %w[normal accept_timeout transient rate_limit validation].include?(scenario)
     raise ArgumentError, "Fault controls disabled" if Rails.env.production? && scenario != "normal"
     total = product.price * quantity.to_i
-    create!(idempotency_key: SecureRandom.uuid, currency: product.currency, total: total,
+    transaction do
+      order = create!(idempotency_key: SecureRandom.uuid, currency: product.currency, total: total,
       payload: { sku: product.sku, quantity: quantity.to_i, currency: product.currency, total: total.to_s("F"), scenario: scenario })
+      Operation.admit!(kind: "submit_order", purchase_order: order)
+      order
+    end
   end
 
   def submit!
