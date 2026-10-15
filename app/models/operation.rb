@@ -44,7 +44,7 @@ class Operation < ApplicationRecord
         outcome = terminal ? (kind == "submit_order" && (transient || error.message != "http_422") ? "manual_review" : "failed") : "retry_wait"
         delay = [2**cycle_attempts + random.rand(0.0..1.0), error.respond_to?(:retry_after) ? error.retry_after.to_f : 0].max
         update!(state: outcome, last_error: error.message.to_s.first(100), next_attempt_at: now + delay, lease_expires_at: nil, claim_token: nil)
-        purchase_order&.update!(state: outcome) if %w[failed manual_review].include?(outcome) && purchase_order.supplier_reference.nil?
+        purchase_order&.update!(state: outcome) if %w[failed manual_review].include?(outcome) && purchase_order && purchase_order.supplier_reference.nil?
         attempts.find_by!(number: attempt_count).update!(outcome: outcome, code: last_error, finished_at: now)
       else
         if kind == "submit_order"

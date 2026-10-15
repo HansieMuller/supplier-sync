@@ -108,6 +108,23 @@ class OperationsTest < HttpSupplierTest
     assert_equal 1, operation.attempts.count
   end
 
+  test "catalogue terminal failures and exhausted abandoned claims do not stall dispatch" do
+    sync = CatalogueSync.schedule!
+    operation = Operation.find_by!(catalogue_sync: sync)
+    _, delivery = OutboxDispatcher.claim
+    token = operation.claim!(delivery)
+    operation.finish!(token, error: SupplierClient::Permanent.new("invalid_cursor"))
+    assert_equal "failed", operation.reload.state
+    operation.retry_by_operator!
+    operation.update!(cycle_attempts: 4)
+    _, delivery = OutboxDispatcher.claim
+    operation.claim!(delivery)
+    Operation.recover_stale!(now: 2.minutes.from_now)
+    assert_equal "failed", operation.reload.state
+    assert_equal "abandoned_claim", operation.last_error
+    assert_nil OutboxDispatcher.claim(now: 1.day.from_now)
+  end
+
   test "physical Redis queue admission stays bounded" do
     Sidekiq.redis { |redis| redis.call("DEL", "queue:supplier", "queues") }
     100.times { assert BoundedQueue.push(1, SecureRandom.uuid) }
