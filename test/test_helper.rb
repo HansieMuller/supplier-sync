@@ -12,10 +12,23 @@ require_relative "../simulator/app"
 class ActiveSupport::TestCase
   parallelize(workers: 1)
 
+  # db:prepare may legitimately seed catalogue intent on a fresh database.
+  # Each suite owns an empty, explicitly named test DB; never clear development data.
+  def self.clear_demo_records!
+    unless Rails.env.test? && ActiveRecord::Base.connection_db_config.database == "supplier_sync_test"
+      raise "Behavior tests require the isolated supplier_sync_test database"
+    end
+    ActiveRecord::Base.transaction do
+      [Finding, StatementRow, StatementImport, Attempt, Operation, WebhookEvent, PurchaseOrder, CatalogueSync, Product].each(&:delete_all)
+    end
+  end
+
   def product
     Product.create!(sku: "DEMO-001", name: "Workshop notebook", currency: "ZAR", price: "45.00")
   end
 end
+
+ActiveSupport::TestCase.clear_demo_records!
 
 class ActionDispatch::IntegrationTest
   def operator_headers

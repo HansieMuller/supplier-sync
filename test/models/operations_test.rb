@@ -161,28 +161,8 @@ end
 class CompetingTransactionsTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 
-  setup do
-    Attempt.delete_all
-    Operation.delete_all
-    WebhookEvent.delete_all
-    Finding.delete_all
-    StatementRow.delete_all
-    StatementImport.delete_all
-    PurchaseOrder.delete_all
-    CatalogueSync.delete_all
-    Product.delete_all
-  end
-  teardown do
-    Attempt.delete_all
-    Operation.delete_all
-    WebhookEvent.delete_all
-    Finding.delete_all
-    StatementRow.delete_all
-    StatementImport.delete_all
-    PurchaseOrder.delete_all
-    CatalogueSync.delete_all
-    Product.delete_all
-  end
+  setup { self.class.clear_demo_records! }
+  teardown { self.class.clear_demo_records! }
 
   # A barrier releases two independent PostgreSQL sessions together, with no timing sleeps.
   def competing(&block)
