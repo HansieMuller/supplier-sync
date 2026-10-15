@@ -15,6 +15,8 @@ class OperationJob
       result = client.lookup(order.idempotency_key) || client.submit(order.idempotency_key, order.payload)
       client.validate_order!(result, order.payload)
       operation.finish!(token, result: result)
+    when "webhook"
+      operation.finish!(token)
     when "catalogue_sync"
       guard = -> { operation.reload.lock!; operation.ensure_claim!(token) }
       operation.catalogue_sync.run!(client: client, guard: guard)

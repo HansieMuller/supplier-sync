@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_000200) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_15_000300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -33,6 +33,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_000200) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "findings", force: :cascade do |t|
+    t.bigint "statement_row_id", null: false
+    t.string "code", null: false
+    t.string "detail", null: false
+    t.index ["statement_row_id", "code"], name: "index_findings_on_statement_row_id_and_code", unique: true
+    t.index ["statement_row_id"], name: "index_findings_on_statement_row_id"
+  end
+
   create_table "operations", force: :cascade do |t|
     t.bigint "purchase_order_id"
     t.bigint "catalogue_sync_id"
@@ -49,12 +57,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_000200) do
     t.string "last_error"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "webhook_event_id"
     t.index ["catalogue_sync_id"], name: "index_operations_on_catalogue_sync_id", unique: true
     t.index ["purchase_order_id"], name: "index_operations_on_purchase_order_id", unique: true
     t.index ["state", "lease_expires_at"], name: "index_operations_on_state_and_lease_expires_at"
     t.index ["state", "next_attempt_at"], name: "index_operations_on_state_and_next_attempt_at"
+    t.index ["webhook_event_id"], name: "index_operations_on_webhook_event_id", unique: true
     t.check_constraint "attempt_count >= 0 AND cycle_attempts >= 0 AND cycle_attempts <= 5 AND operator_retries >= 0 AND operator_retries <= 3", name: "bounded_attempt_budget"
-    t.check_constraint "kind::text = 'submit_order'::text AND purchase_order_id IS NOT NULL AND catalogue_sync_id IS NULL OR kind::text = 'catalogue_sync'::text AND catalogue_sync_id IS NOT NULL AND purchase_order_id IS NULL", name: "operation_subject"
+    t.check_constraint "kind::text = 'submit_order'::text AND purchase_order_id IS NOT NULL AND catalogue_sync_id IS NULL AND webhook_event_id IS NULL OR kind::text = 'catalogue_sync'::text AND catalogue_sync_id IS NOT NULL AND purchase_order_id IS NULL AND webhook_event_id IS NULL OR kind::text = 'webhook'::text AND webhook_event_id IS NOT NULL AND purchase_order_id IS NULL AND catalogue_sync_id IS NULL", name: "operation_subject"
     t.check_constraint "state::text = ANY (ARRAY['pending'::character varying, 'queued'::character varying, 'running'::character varying, 'retry_wait'::character varying, 'completed'::character varying, 'failed'::character varying, 'manual_review'::character varying]::text[])", name: "valid_operation_state"
   end
 
@@ -85,7 +95,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_000200) do
     t.check_constraint "total >= 0::numeric AND (currency::text = ANY (ARRAY['ZAR'::character varying, 'USD'::character varying, 'EUR'::character varying]::text[]))", name: "valid_order_total"
   end
 
+  create_table "statement_imports", force: :cascade do |t|
+    t.string "digest", null: false
+    t.string "filename", null: false
+    t.string "state", default: "processing", null: false
+    t.string "error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["digest"], name: "index_statement_imports_on_digest", unique: true
+  end
+
+  create_table "statement_rows", force: :cascade do |t|
+    t.bigint "statement_import_id", null: false
+    t.integer "line_number", null: false
+    t.text "source", null: false
+    t.jsonb "fields", default: {}, null: false
+    t.index ["statement_import_id", "line_number"], name: "index_statement_rows_on_statement_import_id_and_line_number", unique: true
+    t.index ["statement_import_id"], name: "index_statement_rows_on_statement_import_id"
+  end
+
+  create_table "webhook_events", force: :cascade do |t|
+    t.string "event_key", null: false
+    t.string "body_digest", null: false
+    t.jsonb "payload", null: false
+    t.string "state", default: "received", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_key"], name: "index_webhook_events_on_event_key", unique: true
+  end
+
   add_foreign_key "attempts", "operations"
+  add_foreign_key "findings", "statement_rows"
   add_foreign_key "operations", "catalogue_syncs"
   add_foreign_key "operations", "purchase_orders"
+  add_foreign_key "operations", "webhook_events"
+  add_foreign_key "statement_rows", "statement_imports"
 end

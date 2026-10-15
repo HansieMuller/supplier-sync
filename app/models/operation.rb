@@ -6,6 +6,7 @@ class Operation < ApplicationRecord
   ACTIVE_STATES = %w[pending queued running retry_wait].freeze
   belongs_to :purchase_order, optional: true
   belongs_to :catalogue_sync, optional: true
+  belongs_to :webhook_event, optional: true
   has_many :attempts, dependent: :restrict_with_exception
   scope :active, -> { where(state: ACTIVE_STATES) }
   scope :due, ->(now) { where(state: %w[pending retry_wait]).where("next_attempt_at <= ?", now) }
@@ -41,7 +42,7 @@ class Operation < ApplicationRecord
       if error
         transient = error.is_a?(SupplierClient::Transient)
         terminal = !transient || cycle_attempts >= MAX_ATTEMPTS
-        outcome = terminal ? (kind == "submit_order" && (transient || error.message != "http_422") ? "manual_review" : "failed") : "retry_wait"
+        outcome = terminal ? (%w[submit_order webhook].include?(kind) && (transient || error.message != "http_422") ? "manual_review" : "failed") : "retry_wait"
         delay = [2**cycle_attempts + random.rand(0.0..1.0), error.respond_to?(:retry_after) ? error.retry_after.to_f : 0].max
         update!(state: outcome, last_error: error.message.to_s.first(100), next_attempt_at: now + delay, lease_expires_at: nil, claim_token: nil)
         purchase_order&.update!(state: outcome) if %w[failed manual_review].include?(outcome) && purchase_order && purchase_order.supplier_reference.nil?
@@ -54,6 +55,7 @@ class Operation < ApplicationRecord
             end
           end
         end
+        webhook_event.apply! if kind == "webhook"
         update!(state: "completed", last_error: nil, lease_expires_at: nil, claim_token: nil)
         attempts.find_by!(number: attempt_count).update!(outcome: "completed", finished_at: now)
       end

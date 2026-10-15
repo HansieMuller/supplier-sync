@@ -156,6 +156,7 @@ class CompetingTransactionsTest < ActiveSupport::TestCase
   setup do
     Attempt.delete_all
     Operation.delete_all
+    WebhookEvent.delete_all
     PurchaseOrder.delete_all
     CatalogueSync.delete_all
     Product.delete_all
@@ -163,6 +164,7 @@ class CompetingTransactionsTest < ActiveSupport::TestCase
   teardown do
     Attempt.delete_all
     Operation.delete_all
+    WebhookEvent.delete_all
     PurchaseOrder.delete_all
     CatalogueSync.delete_all
     Product.delete_all

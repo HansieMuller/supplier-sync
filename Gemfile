@@ -5,6 +5,7 @@ gem "propshaft", "1.3.2"
 gem "pg", "1.6.3"
 gem "puma", "8.0.2"
 gem "sidekiq", "8.1.7"
+gem "csv", "3.3.5"
 group :development, :test do
   gem "brakeman", "8.1.0", require: false
   gem "bundler-audit", "0.9.3", require: false

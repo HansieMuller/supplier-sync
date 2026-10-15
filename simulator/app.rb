@@ -2,6 +2,8 @@ require "json"
 require "rack"
 require "fileutils"
 require "digest"
+require "net/http"
+require "openssl"
 require "bigdecimal"
 require_relative "../lib/demo_config"
 DemoConfig.load!
@@ -80,6 +82,21 @@ class SupplierSimulator
       # Intentional fault: durable acceptance precedes a delay longer than the client's read timeout.
       sleep 0.7 if delay
       result
+    when ["POST", "/emit"]
+      input = JSON.parse(request.body.read(4096))
+      order = ledger { |data| data["orders"][input.fetch("key")]&.dup }
+      return response(404, error: "unknown") unless order
+      event = { id: input.fetch("id"), reference: order.fetch("reference"), status: input.fetch("status"), version: input.fetch("version") }
+      raw = JSON.generate(event)
+      timestamp = Time.now.to_i.to_s
+      signature = OpenSSL::HMAC.hexdigest("SHA256", ENV.fetch("WEBHOOK_SECRET"), "#{timestamp}.#{raw}")
+      http = Net::HTTP.new("127.0.0.1", DemoConfig.port("APP_PORT", 3000), nil)
+      http.open_timeout = 0.5
+      http.read_timeout = 1
+      http.write_timeout = 0.5
+      http.max_retries = 0
+      result = http.post("/webhooks/supplier", raw, { "Content-Type" => "application/json", "X-Supplier-Timestamp" => timestamp, "X-Supplier-Signature" => signature })
+      response(200, receiver_status: result.code.to_i)
     when ["POST", "/reset"]
       ledger { |data| data.replace({ "orders" => {}, "calls" => {}, "payloads" => {} }) }
       response(200, status: "reset")

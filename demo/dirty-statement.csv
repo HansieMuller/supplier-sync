@@ -1,0 +1,6 @@
+reference,status,currency,total
+SUP-1,accepted,ZAR,45.00
+SUP-1,shipped,ZAR,49.00
+SUP-999,accepted,ZAR,45.00
+SUP-1,accepted,USD,45.00
+=DEMO,unknown,ZAR,45.123

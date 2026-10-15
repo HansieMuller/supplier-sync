@@ -15,3 +15,12 @@
 <% @orders.each do |order| %>
   <p>#<%= order.id %> · <%= order.state %> · <%= order.supplier_reference || "Awaiting supplier" %> · <%= order.currency %> <%= order.total %></p>
 <% end %>
+
+<h2>Supplier statement</h2>
+<%= form_with url: statements_path, multipart: true do |form| %>
+  <%= form.file_field :statement, accept: ".csv", required: true, aria: { label: "Statement CSV" } %>
+  <%= form.submit "Reconcile statement" %>
+<% end %>
+<% StatementImport.order(id: :desc).limit(10).each do |statement| %>
+  <p>Statement #<%= statement.id %> · <%= statement.state %> · <%= statement.error %> · <%= link_to "Export findings", statement_path(statement) %></p>
+<% end %>

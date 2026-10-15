@@ -5,6 +5,10 @@ namespace :demo do
     SupplierClient.new.request("POST", "/reset", {})
     Attempt.delete_all
     Operation.delete_all
+    WebhookEvent.delete_all
+    Finding.delete_all
+    StatementRow.delete_all
+    StatementImport.delete_all
     PurchaseOrder.delete_all
     CatalogueSync.delete_all
     Product.delete_all
