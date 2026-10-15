@@ -58,6 +58,8 @@ To reset: stop `bin/dev`, start `bin/supplier` alone in another terminal, then r
 
 Separate process commands are `bin/supplier`, `bin/rails server -b 127.0.0.1`, `bundle exec sidekiq -C config/sidekiq.yml` and `bin/dispatch`. APP_PORT/PORT default to 3000; SUPPLIER_PORT defaults to 4567. Only ports are configurable for the provider: HTTP always targets literal `127.0.0.1`, disables environment proxies and follows no redirects. Fault controls are development/test only.
 
+The authenticated simulator `/stats` reports ledger `order_count`, per-key `order_posts` and `order_lookups`. POSTs count authenticated requests with a valid key and a parseable JSON object, including accepted-key replays, payload conflicts and scenario rejections. Lookups count GETs including missing keys. Counters start when initialized or reset; they do not reconstruct traffic from an older ledger. Smoke uses a reset, isolated ledger and asserts these three measurements separately.
+
 Tests force Redis database 13 on the configured Redis endpoint. Smoke forces database 14 (SMOKE_REDIS_URL can choose its endpoint) and the named `supplier_sync_smoke` database. It rejects DATABASE_URL and owns only its child processes. Smoke requires free loopback ports 3100 and 4569. Do not share these dedicated test databases with other applications. Logs stay in ignored `tmp/` and `log/`.
 
 ## Architecture and guarantees
