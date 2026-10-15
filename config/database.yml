@@ -1,0 +1,17 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: 8
+  host: <%= ENV.fetch("PGHOST", "127.0.0.1") %>
+  port: <%= ENV.fetch("PGPORT", 5432) %>
+  username: <%= ENV.fetch("PGUSER", ENV.fetch("USER", "postgres")) %>
+  password: <%= ENV["PGPASSWORD"] %>
+development:
+  <<: *default
+  database: supplier_sync_development
+test:
+  <<: *default
+  database: supplier_sync_test
+production:
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>
