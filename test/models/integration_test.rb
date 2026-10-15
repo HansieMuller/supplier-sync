@@ -41,6 +41,25 @@ class SupplierIntegrationTest < HttpSupplierTest
     assert_raises(SupplierClient::Permanent) { sync.run!(client: client) }
   end
 
+  test "key payload identity is retained even after supplier rejection" do
+    order = PurchaseOrder.place!(product: product, quantity: 1, scenario: "rate_limit")
+    assert_raises(SupplierClient::Transient) { SupplierClient.new.submit(order.idempotency_key, order.payload) }
+    error = assert_raises(SupplierClient::Permanent) { SupplierClient.new.submit(order.idempotency_key, order.payload.merge("scenario" => "normal")) }
+    assert_equal "http_409", error.message
+  end
+
+  test "Retry-After supports dates and rejects excessive deferral instead of retrying early" do
+    client = SupplierClient.new
+    travel_to Time.utc(2026, 10, 15, 10) do
+      assert_equal 120, client.parse_retry_after(2.minutes.from_now.httpdate)
+      assert_equal 120, client.parse_retry_after("120")
+      assert_equal 0, client.parse_retry_after(2.minutes.ago.httpdate)
+      assert_nil client.parse_retry_after("bad")
+      assert_nil client.parse_retry_after("-1")
+      assert_raises(SupplierClient::Permanent) { client.parse_retry_after("86401") }
+    end
+  end
+
   test "validation errors remain permanent" do
     order = PurchaseOrder.place!(product: product, quantity: 1, scenario: "validation")
     assert_raises(SupplierClient::Permanent) { order.submit! }

@@ -72,7 +72,8 @@ class SupplierClient
   def parse_retry_after(value)
     return if value.nil?
     seconds = value.match?(/\A[0-9]+\z/) ? value.to_i : (Time.httpdate(value) - Time.current).ceil
-    [[seconds, 0].max, 86_400].min
+    raise Permanent, "retry_after_excessive" if seconds > 86_400
+    [seconds, 0].max
   rescue ArgumentError
     nil
   end

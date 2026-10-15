@@ -108,6 +108,21 @@ class OperationsTest < HttpSupplierTest
     assert_equal 1, operation.attempts.count
   end
 
+  test "operator retry budgets are bounded and replaced queued deliveries are ignored" do
+    order = PurchaseOrder.place!(product: product, quantity: 1)
+    operation = Operation.find_by!(purchase_order: order)
+    id, old_delivery = OutboxDispatcher.claim
+    Operation.recover_stale!(now: 2.minutes.from_now)
+    _, new_delivery = OutboxDispatcher.claim(now: 3.minutes.from_now)
+    OperationJob.new.perform(id, old_delivery)
+    assert_equal 0, operation.attempts.count
+    OperationJob.new.perform(id, new_delivery)
+    assert_equal "completed", operation.reload.state
+    operation.update!(state: "manual_review", operator_retries: 3)
+    assert_raises(ArgumentError) { operation.retry_by_operator! }
+    assert_equal 3, operation.reload.operator_retries
+  end
+
   test "catalogue terminal failures and exhausted abandoned claims do not stall dispatch" do
     sync = CatalogueSync.schedule!
     operation = Operation.find_by!(catalogue_sync: sync)
@@ -180,6 +195,47 @@ class CompetingTransactionsTest < ActiveSupport::TestCase
     tokens = competing { Operation.find(operation.id).claim!(delivery) }
     assert_equal 1, tokens.compact.size
     assert_equal 1, operation.attempts.count
+  end
+
+  test "catalogue admission coalesces simultaneous requests" do
+    results = competing { CatalogueSync.schedule!.id }
+    assert_equal 1, results.uniq.size
+    assert_equal 1, Operation.count
+  end
+
+  test "active operation admission cannot exceed its boundary under a race" do
+    199.times do
+      Operation.create!(kind: "catalogue_sync", catalogue_sync: CatalogueSync.create!, next_attempt_at: Time.current)
+    end
+    selected_product = product
+    results = competing do
+      begin
+        PurchaseOrder.place!(product: selected_product, quantity: 1).id
+      rescue Operation::CapacityExceeded
+        :full
+      end
+    end
+    assert_equal 1, results.count(:full)
+    assert_equal 200, Operation.active.count
+    assert_equal 1, PurchaseOrder.count
+  end
+
+  test "outstanding claim admission cannot exceed its boundary under a race" do
+    51.times do |index|
+      Operation.create!(kind: "catalogue_sync", catalogue_sync: CatalogueSync.create!, next_attempt_at: Time.current,
+        state: index < 49 ? "queued" : "pending", lease_expires_at: 1.minute.from_now)
+    end
+    assert_equal 1, competing { OutboxDispatcher.claim }.compact.size
+    assert_equal 50, Operation.where(state: "queued").count
+  end
+
+  test "physical Redis capacity is atomic between producers" do
+    Sidekiq.redis { |redis| redis.call("DEL", "queue:supplier", "queues") }
+    99.times { BoundedQueue.push(1, SecureRandom.uuid) }
+    assert_equal [false, true], competing { BoundedQueue.push(1, SecureRandom.uuid) }.sort_by { |value| value ? 1 : 0 }
+    assert_equal 100, Sidekiq.redis { |redis| redis.call("LLEN", "queue:supplier") }
+  ensure
+    Sidekiq.redis { |redis| redis.call("DEL", "queue:supplier", "queues") }
   end
 
   test "other sessions do not observe rolled-back business/outbox rows" do

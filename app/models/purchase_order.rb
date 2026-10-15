@@ -7,7 +7,7 @@ class PurchaseOrder < ApplicationRecord
   def self.place!(product:, quantity:, scenario: "normal")
     raise ArgumentError, "Quantity must be between 1 and 100" unless quantity.to_s.match?(/\A[1-9][0-9]?\z|\A100\z/)
     raise ArgumentError, "Unknown scenario" unless %w[normal accept_timeout transient rate_limit validation].include?(scenario)
-    raise ArgumentError, "Fault controls disabled" if Rails.env.production? && scenario != "normal"
+    raise ArgumentError, "Fault controls disabled" if !(Rails.env.development? || Rails.env.test?) && scenario != "normal"
     total = product.price * quantity.to_i
     transaction do
       order = create!(idempotency_key: SecureRandom.uuid, currency: product.currency, total: total,

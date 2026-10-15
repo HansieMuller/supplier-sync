@@ -1,6 +1,9 @@
 class CatalogueSync < ApplicationRecord
   def self.schedule!
     transaction do
+      connection.execute("SELECT pg_advisory_xact_lock(8142201)")
+      existing = Operation.active.where(kind: "catalogue_sync").first
+      return existing.catalogue_sync if existing
       sync = create!
       Operation.admit!(kind: "catalogue_sync", catalogue_sync: sync)
       sync

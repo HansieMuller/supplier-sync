@@ -2,6 +2,7 @@ require "json"
 require "rack"
 require "fileutils"
 require "digest"
+require "bigdecimal"
 require_relative "../lib/demo_config"
 DemoConfig.load!
 
@@ -14,6 +15,7 @@ class SupplierSimulator
   ].freeze
 
   def initialize(path: File.expand_path("../tmp/supplier-#{ENV.fetch('RAILS_ENV', 'development')}.json", __dir__))
+    raise ArgumentError, "Simulator is development/test only" unless %w[development test].include?(ENV.fetch("RAILS_ENV", "development"))
     @path = path
   end
 
@@ -22,7 +24,7 @@ class SupplierSimulator
     File.open(@path, File::RDWR | File::CREAT, 0o600) do |file|
       file.flock(File::LOCK_EX)
       raw = file.read
-      data = raw.empty? ? { "orders" => {}, "calls" => {} } : JSON.parse(raw)
+      data = raw.empty? ? { "orders" => {}, "calls" => {}, "payloads" => {} } : JSON.parse(raw)
       result = yield data
       file.rewind
       file.write(JSON.generate(data))
@@ -46,10 +48,16 @@ class SupplierSimulator
       raw = request.body.read(16_385)
       return response(413, error: "too_large") if raw.bytesize > 16_384
       payload = JSON.parse(raw)
+      return response(422, error: "invalid_order") unless payload.is_a?(Hash)
       key = request.get_header("HTTP_IDEMPOTENCY_KEY").to_s
       return response(422, error: "invalid_key") unless key.match?(/\A[0-9a-f-]{36}\z/)
       delay = false
       result = ledger do |data|
+        data["payloads"] ||= {}
+        if data["payloads"].key?(key) && data["payloads"][key] != payload
+          next response(409, error: "key_payload_conflict")
+        end
+        data["payloads"][key] = payload
         existing = data["orders"][key]
         if existing
           next(existing["payload"] == payload ? response(200, existing) : response(409, error: "key_payload_conflict"))
@@ -60,7 +68,7 @@ class SupplierSimulator
         next response(503, error: "unavailable") if scenario == "transient"
         next response(429, { error: "rate_limit" }, { "retry-after" => "2" }) if scenario == "rate_limit" && calls == 1
         item = PRODUCTS.find { |product| product[:sku] == payload["sku"] }
-        unless item && payload["quantity"].is_a?(Integer) && (1..100).cover?(payload["quantity"]) && payload["currency"] == item[:currency]
+        unless item && payload["quantity"].is_a?(Integer) && (1..100).cover?(payload["quantity"]) && payload["currency"] == item[:currency] && payload["total"].is_a?(String) && payload["total"].match?(/\A[0-9]{1,10}\.[0-9]{1,2}\z/) && BigDecimal(payload["total"]) == BigDecimal(item[:price]) * payload["quantity"]
           next response(422, error: "invalid_order")
         end
         reference = "SUP-#{data['orders'].size + 1}"
@@ -73,7 +81,7 @@ class SupplierSimulator
       sleep 0.7 if delay
       result
     when ["POST", "/reset"]
-      ledger { |data| data.replace({ "orders" => {}, "calls" => {} }) }
+      ledger { |data| data.replace({ "orders" => {}, "calls" => {}, "payloads" => {} }) }
       response(200, status: "reset")
     when ["GET", "/stats"]
       ledger { |data| response(200, order_count: data["orders"].size, calls: data["calls"]) }
@@ -85,8 +93,10 @@ class SupplierSimulator
         response(404, error: "unknown")
       end
     end
-  rescue JSON::ParserError
+  rescue JSON::ParserError, KeyError
     response(422, error: "malformed_json")
+  rescue Timeout::Error, SystemCallError
+    response(503, error: "receiver_unavailable")
   end
 
   def response(status, body = {}, headers = {})
