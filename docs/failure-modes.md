@@ -14,10 +14,12 @@ Run `bin/rails test` for behavior tests; they use actual PostgreSQL and a loopba
 | Both enqueue crash windows; enqueue is not completion | `OperationsTest`: before/after enqueue exceptions and stale recovery |
 | Duplicate jobs, old queued tokens and late running results | Same class: duplicate delivery; replacement delivery; abandoned-claim fencing |
 | Retry exhaustion, terminal catalogue failure and operator budget limits | Same class: exhausted/manual review; catalogue no-order subject; retry limit |
+| Order total exceeds numeric storage range | `OperationsTest`: valid price/quantity overflow rejected before business/outbox insertion |
 | Real acceptance followed by response timeout and lookup recovery | Same class plus `bin/smoke`; one provider POST and one accepted order |
 | Webhook tampering, old/future timestamp, duplicate/reused IDs, malformed JSON/types/UTF-8 | `test/integration/webhooks_test.rb` |
 | Receipt-before-acknowledgement; outbox-capacity rollback | Same file; concurrent receipt in `CompetingTransactionsTest` |
 | Newer, older, same/conflicting version and unknown reference | Same file; simultaneous different versions in `CompetingTransactionsTest` |
+| Simulator shipment lookup agrees with webhook; equal-version conflict rejected | `bin/smoke` |
 | Signed events sent over actual HTTP and consumed by actual Sidekiq | `bin/smoke` |
 | Dirty references/status/currency/decimal totals and conflicting duplicates | `test/models/statements_test.rb` + synthetic `demo/dirty-statement.csv` |
 | File/line/field/row/encoding/NUL limits; failed provenance | `statements_test.rb`: strict limits and repeat NUL file |
