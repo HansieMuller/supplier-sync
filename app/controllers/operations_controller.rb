@@ -1,4 +1,17 @@
 class OperationsController < ApplicationController
+  def index
+    operations = Operation.needing_attention.order(id: :desc)
+    if params.key?(:before)
+      cursor = Integer(params[:before].to_s, 10, exception: false)
+      raise ActionController::BadRequest, "Invalid operation cursor" unless cursor&.between?(1, 2**63 - 1)
+      operations = operations.where("id < ?", cursor)
+    end
+    # A keyset cursor keeps each read bounded, even when the exception is old.
+    @operations = operations.limit(21).to_a
+    @has_older = @operations.size > 20
+    @operations.pop if @has_older
+  end
+
   def show
     @operation = Operation.find(params[:id])
     @attempts = @operation.attempts.order(:number).limit(100)

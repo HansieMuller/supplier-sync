@@ -177,6 +177,18 @@ h3 {
 .stat {
   padding:19px 22px
 }
+.attention-link {
+  color:inherit
+}
+.attention-link:hover {
+  border-color:#5055c8;
+  text-decoration:none
+}
+.pagination {
+  display:flex;
+  justify-content:space-between;
+  gap:20px
+}
 .stat-label {
   font-size:11px;
   color:#7e8699

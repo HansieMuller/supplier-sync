@@ -9,6 +9,7 @@ class Operation < ApplicationRecord
   belongs_to :webhook_event, optional: true
   has_many :attempts, dependent: :restrict_with_exception
   scope :active, -> { where(state: ACTIVE_STATES) }
+  scope :needing_attention, -> { where(state: %w[failed manual_review]) }
   scope :due, ->(now) { where(state: %w[pending retry_wait]).where("next_attempt_at <= ?", now) }
 
   # This row is the outbox intent. The caller's business transaction owns its commit.
