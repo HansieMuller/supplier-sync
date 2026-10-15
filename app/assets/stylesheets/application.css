@@ -70,7 +70,7 @@ button.secondary,.button.secondary {
   font-size:19px
 }
 .nav-label {
-  font-size:10px;
+  font-size:12px;
   letter-spacing:1.6px;
   color:#8992ad;
   margin:0 12px 13px
@@ -92,7 +92,7 @@ button.secondary,.button.secondary {
   color:#d0d6e7
 }
 .sidebar-note small {
-  font-size:10px;
+  font-size:12px;
   color:#8992ad
 }
 .live-dot {
@@ -114,16 +114,16 @@ button.secondary,.button.secondary {
   justify-content:space-between;
   align-items:center;
   padding:0 36px;
-  font-size:10px;
+  font-size:12px;
   letter-spacing:1.4px;
-  color:#71798e
+  color:#596579
 }
 .environment {
   background:#f0f1fa;
   color:#656ba6;
   padding:5px 9px;
   border-radius:4px;
-  font-size:9px
+  font-size:12px
 }
 main {
   max-width:1440px;
@@ -146,15 +146,15 @@ h3 {
   margin:0 0 10px
 }
 .subtitle,.muted {
-  color:#7a8295
+  color:#596579
 }
 .subtitle {
   margin:0 0 26px
 }
 .eyebrow {
-  font-size:10px;
+  font-size:12px;
   letter-spacing:1.4px;
-  color:#858da2
+  color:#596579
 }
 .heading {
   display:flex;
@@ -190,8 +190,8 @@ h3 {
   gap:20px
 }
 .stat-label {
-  font-size:11px;
-  color:#7e8699
+  font-size:12px;
+  color:#596579
 }
 .stat-number {
   font-size:29px;
@@ -201,8 +201,8 @@ h3 {
   letter-spacing:-1px
 }
 .stat-caption {
-  font-size:10px;
-  color:#939aaa;
+  font-size:12px;
+  color:#596579;
   margin-top:8px
 }
 .layout-grid {
@@ -227,8 +227,8 @@ h3 {
   padding:20px 22px
 }
 .panel-header small {
-  color:#8991a4;
-  font-size:10px
+  color:#596579;
+  font-size:12px
 }
 .table-wrap {
   overflow-x:auto
@@ -240,8 +240,8 @@ table {
   text-align:left
 }
 th {
-  font-size:9px;
-  color:#8790a2;
+  font-size:12px;
+  color:#596579;
   text-transform:uppercase;
   letter-spacing:.8px;
   font-weight:600;
@@ -256,7 +256,7 @@ tr:last-child td {
   border-bottom:0
 }
 td .muted {
-  font-size:10px
+  font-size:12px
 }
 td.wrap {
   white-space:normal;
@@ -265,7 +265,7 @@ td.wrap {
 }
 .badge {
   display:inline-block;
-  font-size:10px;
+  font-size:12px;
   line-height:1.7;
   padding:2px 8px;
   border-radius:4px;
@@ -274,25 +274,25 @@ td.wrap {
   white-space:nowrap
 }
 .badge.accepted,.badge.completed,.badge.applied,.badge.delivered {
-  color:#348967;
+  color:#246b4e;
   background:#eaf7f0
 }
 .badge.pending,.badge.queued,.badge.running,.badge.shipped {
   background:#eef0ff;
-  color:#6066b8
+  color:#4b509b
 }
 .badge.retry_wait,.badge.manual_review {
   background:#fff4df;
-  color:#a47c2c
+  color:#805b16
 }
 .badge.failed {
   background:#ffebee;
-  color:#bc5262
+  color:#9f354b
 }
 label {
   display:block;
-  font-size:11px;
-  color:#717b91;
+  font-size:12px;
+  color:#596579;
   margin-bottom:5px
 }
 select,input[type=number],input[type=file] {
@@ -306,11 +306,11 @@ select,input[type=number],input[type=file] {
   min-height:37px
 }
 input[type=file] {
-  font-size:11px
+  font-size:12px
 }
 .form-note {
-  font-size:11px;
-  color:#8a93a7;
+  font-size:12px;
+  color:#596579;
   margin:12px 0 0
 }
 .field-row {
@@ -322,7 +322,7 @@ input[type=file] {
   width:100%
 }
 .empty {
-  color:#8b93a6;
+  color:#596579;
   text-align:center;
   padding:35px 22px;
   font-size:12px
@@ -343,7 +343,7 @@ input[type=file] {
   background:#f0f1fc;
   color:#646b96;
   border-radius:6px;
-  font-size:11px;
+  font-size:12px;
   margin:0 0 20px
 }
 .recovery-note strong {
@@ -354,7 +354,7 @@ input[type=file] {
   margin:0
 }
 .key {
-  font:11px ui-monospace,SFMono-Regular,monospace;
+  font:12px ui-monospace,SFMono-Regular,monospace;
   overflow-wrap:anywhere
 }
 .detail-grid {
@@ -363,8 +363,8 @@ input[type=file] {
   gap:18px
 }
 .detail-label {
-  font-size:10px;
-  color:#8991a3;
+  font-size:12px;
+  color:#596579;
   margin-bottom:5px
 }
 .status-line {
@@ -373,24 +373,24 @@ input[type=file] {
   gap:12px
 }
 .small-button {
-  font-size:10px;
+  font-size:12px;
   padding:5px 9px
 }
 footer {
-  font-size:10px;
-  color:#99a1b3;
+  font-size:12px;
+  color:#596579;
   padding:12px 0 25px
 }
 .file-row {
   padding:13px 20px;
   border-top:1px solid #edf0f5;
-  font-size:11px;
+  font-size:12px;
   display:flex;
   justify-content:space-between;
   gap:10px
 }
 .finding-count {
-  color:#ac812e
+  color:#805b16
 }
 .text-right {
   text-align:right
@@ -398,7 +398,7 @@ footer {
 pre {
   white-space:pre-wrap;
   overflow-wrap:anywhere;
-  font-size:11px;
+  font-size:12px;
   background:#f8f9fd;
   padding:15px;
   border-radius:5px
