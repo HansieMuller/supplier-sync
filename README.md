@@ -119,6 +119,8 @@ Statement uploads are evidence snapshots and never update orders. UTF-8 CSV has 
 | `WebhooksController` → `WebhookEvent.accept!/apply!` | Raw-body authentication, replay tolerance, unique receipt, serialized version updates |
 | `StatementImport.process!/read_rows!` → `StatementExport` | Streaming limits, provenance, repeat identity, decimal comparison, safe exports |
 
+[Changelog](CHANGELOG.md) records the release scope.
+
 The hardest tradeoffs are documented in [design decisions](docs/design-decisions.md). The test map names exact scenarios and executable commands; [verification evidence](docs/verification.md) distinguishes local runs from hosted CI.
 
 ## Limits before public deployment
