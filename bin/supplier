@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require_relative "../config/boot"
+require_relative "../lib/demo_config"
+exec "bundle", "exec", "puma", "simulator/config.ru", "--bind", "tcp://127.0.0.1:#{DemoConfig.port('SUPPLIER_PORT', 4567)}", "--threads", "1:4", "--quiet"

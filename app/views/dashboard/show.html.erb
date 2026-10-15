@@ -1,3 +1,17 @@
 <h1>SupplierSync</h1>
-<p>An AI-assisted portfolio demonstration of reliable supplier integrations.</p>
-<p>Fictional data only. Local educational software.</p>
+<p>AI-assisted portfolio demonstration · Fictional data · Local environment</p>
+<% flash.each do |type, message| %><p role="status"><%= message %></p><% end %>
+<%= button_to "Synchronize catalogue", catalogue_syncs_path %>
+<h2>Catalogue</h2>
+<% @products.each do |product| %>
+  <p><%= product.sku %> · <%= product.name %> · <%= product.currency %> <%= product.price %></p>
+  <%= form_with url: orders_path do |form| %>
+    <%= form.hidden_field :product_id, value: product.id %>
+    <%= form.number_field :quantity, value: 1, min: 1, max: 100, aria: { label: "Quantity" } %>
+    <%= form.submit "Place order" %>
+  <% end %>
+<% end %>
+<h2>Purchase orders</h2>
+<% @orders.each do |order| %>
+  <p>#<%= order.id %> · <%= order.state %> · <%= order.supplier_reference || "Awaiting supplier" %> · <%= order.currency %> <%= order.total %></p>
+<% end %>
