@@ -1,10 +1,478 @@
-/*
- * This is a manifest file that'll be compiled into application.css.
- *
- * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
- * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
- * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
- * depending on specificity.
- *
- * Consider organizing styles into separate files for maintainability.
- */
+* {
+  box-sizing:border-box
+}
+html {
+  scroll-behavior:smooth
+}
+body {
+  margin:0;
+  background:#f5f6fa;
+  color:#20283c;
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+a {
+  color:#4b50bb;
+  text-decoration:none
+}
+a:hover {
+  text-decoration:underline
+}
+button,input,select {
+  font:inherit
+}
+button,input[type=submit],.button {
+  border:0;
+  border-radius:6px;
+  background:#5055c8;
+  color:white;
+  padding:9px 14px;
+  font-weight:600;
+  cursor:pointer;
+  display:inline-block
+}
+button:hover,input[type=submit]:hover {
+  background:#393ead
+}
+button:disabled {
+  opacity:.5
+}
+button.secondary,.button.secondary {
+  background:#eef0fa;
+  color:#454d84
+}
+.sidebar {
+  position:fixed;
+  inset:0 auto 0 0;
+  width:220px;
+  background:#1c233b;
+  color:#d5d9e7;
+  padding:30px 20px;
+  display:flex;
+  flex-direction:column
+}
+.brand {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:white;
+  font-size:20px;
+  font-weight:750;
+  letter-spacing:-.5px;
+  margin-bottom:45px
+}
+.brand-icon {
+  display:grid;
+  place-items:center;
+  background:#7277ec;
+  width:30px;
+  height:34px;
+  border-radius:9px;
+  font-size:19px
+}
+.nav-label {
+  font-size:10px;
+  letter-spacing:1.6px;
+  color:#8992ad;
+  margin:0 12px 13px
+}
+.nav-item {
+  color:#d5d9e7;
+  padding:10px 12px;
+  border-radius:6px;
+  margin:2px 0
+}
+.nav-item:hover {
+  background:#2b3553;
+  text-decoration:none
+}
+.sidebar-note {
+  margin-top:auto;
+  font-size:12px;
+  line-height:1.8;
+  color:#d0d6e7
+}
+.sidebar-note small {
+  font-size:10px;
+  color:#8992ad
+}
+.live-dot {
+  display:inline-block;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#67cba5;
+  margin-right:6px
+}
+.workspace {
+  margin-left:220px
+}
+.topbar {
+  height:65px;
+  background:white;
+  border-bottom:1px solid #e5e8f0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 36px;
+  font-size:10px;
+  letter-spacing:1.4px;
+  color:#71798e
+}
+.environment {
+  background:#f0f1fa;
+  color:#656ba6;
+  padding:5px 9px;
+  border-radius:4px;
+  font-size:9px
+}
+main {
+  max-width:1440px;
+  margin:auto;
+  padding:32px 36px
+}
+h1 {
+  font-size:29px;
+  letter-spacing:-1px;
+  line-height:1.2;
+  margin:8px 0 9px
+}
+h2 {
+  font-size:16px;
+  margin:0;
+  font-weight:650
+}
+h3 {
+  font-size:13px;
+  margin:0 0 10px
+}
+.subtitle,.muted {
+  color:#7a8295
+}
+.subtitle {
+  margin:0 0 26px
+}
+.eyebrow {
+  font-size:10px;
+  letter-spacing:1.4px;
+  color:#858da2
+}
+.heading {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px
+}
+.stats {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  margin:22px 0
+}
+.stat,.panel {
+  background:white;
+  border:1px solid #e3e7ef;
+  border-radius:9px;
+  box-shadow:0 2px 4px #1b254003
+}
+.stat {
+  padding:19px 22px
+}
+.stat-label {
+  font-size:11px;
+  color:#7e8699
+}
+.stat-number {
+  font-size:29px;
+  font-weight:650;
+  margin-top:6px;
+  line-height:1.2;
+  letter-spacing:-1px
+}
+.stat-caption {
+  font-size:10px;
+  color:#939aaa;
+  margin-top:8px
+}
+.layout-grid {
+  display:grid;
+  grid-template-columns:minmax(0,2fr) minmax(260px,1fr);
+  gap:20px;
+  align-items:start
+}
+.panel {
+  margin-bottom:20px;
+  overflow:hidden
+}
+.panel-header {
+  padding:19px 22px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid #edf0f5;
+  gap:16px
+}
+.panel-body {
+  padding:20px 22px
+}
+.panel-header small {
+  color:#8991a4;
+  font-size:10px
+}
+.table-wrap {
+  overflow-x:auto
+}
+table {
+  border-collapse:collapse;
+  width:100%;
+  font-size:12px;
+  text-align:left
+}
+th {
+  font-size:9px;
+  color:#8790a2;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  font-weight:600;
+  background:#fafbfe
+}
+th,td {
+  padding:13px 19px;
+  border-bottom:1px solid #edf0f5;
+  white-space:nowrap
+}
+tr:last-child td {
+  border-bottom:0
+}
+td .muted {
+  font-size:10px
+}
+td.wrap {
+  white-space:normal;
+  min-width:170px;
+  max-width:340px
+}
+.badge {
+  display:inline-block;
+  font-size:10px;
+  line-height:1.7;
+  padding:2px 8px;
+  border-radius:4px;
+  background:#f0f1f6;
+  color:#6a7389;
+  white-space:nowrap
+}
+.badge.accepted,.badge.completed,.badge.applied,.badge.delivered {
+  color:#348967;
+  background:#eaf7f0
+}
+.badge.pending,.badge.queued,.badge.running,.badge.shipped {
+  background:#eef0ff;
+  color:#6066b8
+}
+.badge.retry_wait,.badge.manual_review {
+  background:#fff4df;
+  color:#a47c2c
+}
+.badge.failed {
+  background:#ffebee;
+  color:#bc5262
+}
+label {
+  display:block;
+  font-size:11px;
+  color:#717b91;
+  margin-bottom:5px
+}
+select,input[type=number],input[type=file] {
+  width:100%;
+  border:1px solid #dfe4ee;
+  background:white;
+  color:#38425b;
+  padding:8px 10px;
+  border-radius:5px;
+  margin:0 0 14px;
+  min-height:37px
+}
+input[type=file] {
+  font-size:11px
+}
+.form-note {
+  font-size:11px;
+  color:#8a93a7;
+  margin:12px 0 0
+}
+.field-row {
+  display:grid;
+  grid-template-columns:1fr 2fr;
+  gap:14px
+}
+.full {
+  width:100%
+}
+.empty {
+  color:#8b93a6;
+  text-align:center;
+  padding:35px 22px;
+  font-size:12px
+}
+.notice {
+  padding:12px 16px;
+  background:#edf6f0;
+  border:1px solid #d0e7d6;
+  border-radius:6px;
+  margin-bottom:20px
+}
+.notice.alert {
+  background:#fff4e3;
+  border-color:#efdbb5
+}
+.recovery-note {
+  padding:15px 20px;
+  background:#f0f1fc;
+  color:#646b96;
+  border-radius:6px;
+  font-size:11px;
+  margin:0 0 20px
+}
+.recovery-note strong {
+  color:#454e86
+}
+.inline-form {
+  display:inline-block;
+  margin:0
+}
+.key {
+  font:11px ui-monospace,SFMono-Regular,monospace;
+  overflow-wrap:anywhere
+}
+.detail-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:18px
+}
+.detail-label {
+  font-size:10px;
+  color:#8991a3;
+  margin-bottom:5px
+}
+.status-line {
+  display:flex;
+  align-items:center;
+  gap:12px
+}
+.small-button {
+  font-size:10px;
+  padding:5px 9px
+}
+footer {
+  font-size:10px;
+  color:#99a1b3;
+  padding:12px 0 25px
+}
+.file-row {
+  padding:13px 20px;
+  border-top:1px solid #edf0f5;
+  font-size:11px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px
+}
+.finding-count {
+  color:#ac812e
+}
+.text-right {
+  text-align:right
+}
+pre {
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:11px;
+  background:#f8f9fd;
+  padding:15px;
+  border-radius:5px
+}
+:focus-visible {
+  outline:3px solid #969bf4;
+  outline-offset:3px
+}
+@media(max-width:1050px) {
+  .sidebar {
+    width:185px;
+    padding:25px 15px
+  }
+  .workspace {
+    margin-left:185px
+  }
+  main {
+    padding:25px 22px
+  }
+  .layout-grid {
+    grid-template-columns:1fr
+  }
+  .stats {
+    gap:10px
+  }
+  .stat {
+    padding:15px
+  }
+  .topbar {
+    padding:0 22px
+  }
+}
+@media(max-width:650px) {
+  .sidebar {
+    position:static;
+    width:auto;
+    padding:14px 20px;
+    display:flex;
+    flex-direction:row;
+    gap:15px;
+    align-items:center
+  }
+  .brand {
+    font-size:16px;
+    margin:0
+  }
+  .brand-icon {
+    width:25px;
+    height:28px
+  }
+  .nav-label,.sidebar-note,.nav-item {
+    display:none
+  }
+  .workspace {
+    margin:0
+  }
+  .topbar {
+    height:45px
+  }
+  main {
+    padding:22px 15px
+  }
+  .stats {
+    grid-template-columns:repeat(2,1fr)
+  }
+  h1 {
+    font-size:25px
+  }
+  .heading {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:10px
+  }
+  .detail-grid {
+    grid-template-columns:1fr
+  }
+  .panel-header {
+    padding:16px
+  }
+  .stat-number {
+    font-size:25px
+  }
+}
+.layout-grid>div,.workspace,.panel {
+  min-width:0
+}
+select,input {
+  max-width:100%
+}

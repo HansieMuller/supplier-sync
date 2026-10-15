@@ -11,7 +11,7 @@ development:
   database: supplier_sync_development
 test:
   <<: *default
-  database: supplier_sync_test
+  database: <%= ENV.fetch("PGDATABASE", "supplier_sync_test") %>
 production:
   <<: *default
   url: <%= ENV["DATABASE_URL"] %>

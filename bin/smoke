@@ -1,0 +1,109 @@
+#!/usr/bin/env ruby
+# This command owns only a named synthetic smoke DB, isolated Redis DB 14 and child processes.
+ENV["RAILS_ENV"] = "test"
+ENV["PGDATABASE"] = "supplier_sync_smoke"
+abort "Unset DATABASE_URL; smoke uses its isolated local database" if ENV["DATABASE_URL"]
+require_relative "../config/boot"
+require "uri"
+redis_uri = URI(ENV.fetch("SMOKE_REDIS_URL") { ENV.fetch("REDIS_URL", "redis://127.0.0.1:6379/14") })
+redis_uri.path = "/14"
+ENV["REDIS_URL"] = redis_uri.to_s
+ENV["SUPPLIER_PORT"] = "4569"
+ENV["APP_PORT"] = "3100"
+ENV["PORT"] = "3100"
+require_relative "../config/environment"
+require "socket"
+
+[4569, 3100].each do |port|
+  socket = TCPServer.new("127.0.0.1", port)
+  socket.close
+rescue Errno::EADDRINUSE
+  abort "Smoke port #{port} already in use"
+end
+children = []
+logs = []
+def check(value, description)
+  raise "FAIL: #{description}" unless value
+  puts "PASS: #{description}"
+end
+
+def eventually(description, seconds: 30)
+  deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+  until yield
+    raise "Timed out: #{description}" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+    IO.select(nil, nil, nil, 0.05)
+  end
+  puts "PASS: #{description}"
+end
+
+def launch(name, command, children, logs)
+  log = File.open(Rails.root.join("tmp/smoke-#{name}.log"), "w")
+  logs << log
+  children << Process.spawn(*command, out: log, err: log, pgroup: true)
+end
+
+begin
+  system("bin/rails", "db:prepare", exception: true)
+  # Fixed isolated database; repeat runs remove only this command's synthetic fixtures.
+  [Finding, StatementRow, StatementImport, Attempt, Operation, WebhookEvent, PurchaseOrder, CatalogueSync, Product].each(&:delete_all)
+  Sidekiq.redis { |redis| redis.call("DEL", "queue:supplier", "queues") }
+  launch("supplier", ["bin/supplier"], children, logs)
+  eventually("HTTP simulator is ready") do
+    begin
+      SupplierClient.new.request("GET", "/health")["status"] == "ok"
+    rescue SupplierClient::Transient
+      false
+    end
+  end
+  SupplierClient.new.request("POST", "/reset", {})
+  launch("web", ["bin/rails", "server", "-b", "127.0.0.1", "-p", "3100"], children, logs)
+  launch("sidekiq", ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"], children, logs)
+  launch("dispatcher", ["bin/dispatch"], children, logs)
+  sync = CatalogueSync.schedule!
+  eventually("catalogue traversed real Redis / Sidekiq / HTTP path") { sync.reload.state == "completed" }
+  check(Product.count == 3, "all paginated products synchronized")
+  order = PurchaseOrder.place!(product: Product.find_by!(sku: "DEMO-001"), quantity: 1, scenario: "accept_timeout")
+  operation = Operation.find_by!(purchase_order: order)
+  eventually("ambiguous acceptance recovered by queued lookup") { operation.reload.state == "completed" }
+  check(order.reload.state == "accepted", "order accepted with a supplier reference")
+  check(operation.attempts.order(:number).pluck(:code).include?("Net::ReadTimeout"), "real response timeout recorded")
+  stats = SupplierClient.new.request("GET", "/stats")
+  check(stats["order_count"] == 1 && stats["calls"][order.idempotency_key] == 1, "supplier accepted exactly one synthetic order after one POST")
+  attempts_before_duplicate = operation.attempts.count
+  duplicate_jid = SecureRandom.hex(12)
+  check(BoundedQueue.push(operation.id, operation.delivery_token, jid: duplicate_jid), "duplicate delivery admitted to Redis")
+  eventually("specific duplicate delivery completed by real Sidekiq") do
+    File.foreach(Rails.root.join("tmp/smoke-sidekiq.log")).any? { |line| line.include?("jid=#{duplicate_jid}") && line.include?("done") }
+  end
+  check(operation.attempts.count == attempts_before_duplicate, "duplicate completed-job delivery creates no attempt")
+  eventually("Rails HTTP receiver is ready") do
+    begin
+      Net::HTTP.new("127.0.0.1", 3100, nil).get("/up").code == "200"
+    rescue SystemCallError
+      false
+    end
+  end
+  emitted = SupplierClient.new.request("POST", "/emit", { key: order.idempotency_key, id: "smoke-shipped", status: "shipped", version: 2 })
+  check(emitted["receiver_status"] == 202, "simulator sent a real signed HTTP webhook")
+  supplier_order = SupplierClient.new.lookup(order.idempotency_key)
+  check(supplier_order["status"] == "shipped" && supplier_order["version"] == 2, "supplier lookup agrees with the emitted shipment version")
+  begin
+    SupplierClient.new.request("POST", "/emit", { key: order.idempotency_key, id: "smoke-conflict", status: "delivered", version: 2 })
+    raise "Supplier accepted conflicting equal-version event"
+  rescue SupplierClient::Permanent => error
+    check(error.message == "http_409", "supplier refuses conflicting equal-version shipment")
+  end
+  eventually("webhook intent processed by real Sidekiq") { order.reload.state == "shipped" }
+  emitted = SupplierClient.new.request("POST", "/emit", { key: order.idempotency_key, id: "smoke-shipped", status: "shipped", version: 2 })
+  check(emitted["receiver_status"] == 202 && WebhookEvent.count == 1, "duplicate signed event persisted only once")
+  File.open(Rails.root.join("demo/dirty-statement.csv")) { |file| StatementImport.process!(file) }
+  counts = [StatementImport.count, StatementRow.count, Finding.count]
+  File.open(Rails.root.join("demo/dirty-statement.csv")) { |file| StatementImport.process!(file) }
+  check(counts == [StatementImport.count, StatementRow.count, Finding.count] && Finding.exists?, "dirty statement repeat preserves findings without duplicates")
+  check(order.reload.state == "shipped", "reconciliation did not overwrite order")
+  puts "SMOKE PASSED: PostgreSQL, Redis, Sidekiq, Rails and supplier HTTP simulator."
+ensure
+  children.each { |pid| Process.kill("TERM", -pid) rescue Errno::ESRCH }
+  children.each { |pid| Process.wait(pid) rescue Errno::ECHILD }
+  logs.each(&:close)
+end

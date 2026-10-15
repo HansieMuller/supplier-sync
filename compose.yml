@@ -1,0 +1,27 @@
+name: supplier-sync
+services:
+  postgres:
+    image: postgres:17.11
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: supplier_sync
+    ports: ["127.0.0.1:55439:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supplier_sync"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:8.2.10
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:56379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  postgres-data:
+  redis-data:

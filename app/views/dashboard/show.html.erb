@@ -1,3 +1,62 @@
-<h1>SupplierSync</h1>
-<p>An AI-assisted portfolio demonstration of reliable supplier integrations.</p>
-<p>Fictional data only. Local educational software.</p>
+<div class="heading">
+  <div><div class="eyebrow">SUPPLIER OPERATIONS</div><h1>Integration overview</h1><p class="subtitle">One supplier. A clear view of every order and exception.</p></div>
+  <%= button_to "Synchronize catalogue", catalogue_syncs_path, class: "secondary" %>
+</div>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Purchase orders</div><div class="stat-number"><%= @order_count %></div><div class="stat-caption">Fictional orders in this environment</div></div>
+  <div class="stat"><div class="stat-label">Completed operations</div><div class="stat-number"><%= @counts.fetch("completed", 0) %></div><div class="stat-caption">Confirmed in PostgreSQL</div></div>
+  <div class="stat"><div class="stat-label">Need attention</div><div class="stat-number"><%= @counts.values_at("failed", "manual_review").compact.sum %></div><div class="stat-caption">Failed or awaiting manual review</div></div>
+  <div class="stat"><div class="stat-label">Statement findings</div><div class="stat-number"><%= @finding_count %></div><div class="stat-caption">Discrepancies preserved as evidence</div></div>
+</div>
+<div class="layout-grid">
+  <div>
+    <section class="panel">
+      <div class="panel-header"><h2>Purchase orders</h2><small>Latest 20</small></div>
+      <% if @orders.empty? %><div class="empty">Choose a catalogue product to place your first fictional order.</div><% else %>
+      <div class="table-wrap"><table><thead><tr><th>Order</th><th>Supplier reference</th><th>Status</th><th class="text-right">Total</th></tr></thead><tbody>
+      <% @orders.each do |order| %><tr>
+        <td><%= order.operation ? link_to("PO-#{order.id.to_s.rjust(4, '0')}", operation_path(order.operation)) : "PO-#{order.id}" %><br><span class="muted"><%= order.created_at.utc.strftime("%d %b · %H:%M UTC") %></span></td>
+        <td><%= order.supplier_reference || "Awaiting confirmation" %></td>
+        <td><span class="badge <%= order.state %>"><%= order.state.humanize %></span></td>
+        <td class="text-right"><%= order.currency %> <%= number_with_precision(order.total, precision: 2) %></td>
+      </tr><% end %></tbody></table></div><% end %>
+    </section>
+    <section class="panel" id="operations">
+      <div class="panel-header"><h2>Operation activity</h2><small>Latest 15 · Refresh to update</small></div>
+      <% if @operations.empty? %><div class="empty">Queued work and attempts will appear here.</div><% else %>
+      <div class="table-wrap"><table><thead><tr><th>Operation</th><th>State</th><th>Attempts</th><th>Next retry / result</th></tr></thead><tbody>
+      <% @operations.each do |operation| %><tr>
+        <td><%= link_to "##{operation.id} · #{operation.kind.humanize}", operation_path(operation) %></td>
+        <td><span class="badge <%= operation.state %>"><%= operation.state.humanize %></span></td>
+        <td><%= operation.attempt_count %></td>
+        <td class="wrap"><%= operation.state == "retry_wait" ? operation.next_attempt_at.utc.strftime("%H:%M:%S UTC") : operation.last_error || "—" %></td>
+      </tr><% end %></tbody></table></div><% end %>
+    </section>
+  </div>
+  <div>
+    <section class="panel"><div class="panel-header"><h2>Place a purchase order</h2></div><div class="panel-body">
+      <% if @products.any? %>
+      <%= form_with url: orders_path do |form| %>
+        <%= form.label :product_id, "Catalogue product" %><%= form.select :product_id, @products.map { |product| ["#{product.name} · #{product.currency} #{product.price}", product.id] } %>
+        <%= form.label :quantity %><%= form.number_field :quantity, value: 1, min: 1, max: 100, required: true %>
+        <% if Rails.env.development? || Rails.env.test? %><%= form.label :scenario, "Simulator scenario" %><%= form.select :scenario, [["Normal acceptance", "normal"], ["Accept, then time out", "accept_timeout"], ["Rate limit once (429)", "rate_limit"], ["Provider unavailable (503)", "transient"], ["Validation rejected (422)", "validation"]] %><% end %>
+        <%= form.submit "Queue purchase order", class: "full" %>
+      <% end %>
+      <p class="form-note">The order and its submission intent are saved together.</p>
+      <% else %><p class="muted">Synchronize the supplier catalogue first.</p><% end %>
+    </div></section>
+    <div class="recovery-note"><strong>Try the ambiguous acceptance scenario.</strong><br>The supplier keeps the order; its response is lost. Follow the operation to see lookup recover the same supplier reference.</div>
+    <section class="panel" id="reconciliation"><div class="panel-header"><h2>Supplier statements</h2></div><div class="panel-body">
+      <%= form_with url: statements_path, multipart: true do |form| %>
+        <%= form.label :statement, "Upload a synthetic CSV" %><%= form.file_field :statement, accept: ".csv", required: true %><%= form.submit "Reconcile statement", class: "secondary full" %>
+      <% end %><p class="form-note">512 KiB maximum. Findings preserve the original source line. Orders remain unchanged.</p>
+    </div>
+    <% @imports.each do |statement| %><div class="file-row"><span>#<%= statement.id %> · <%= statement.filename %><br><span class="badge <%= statement.state %>"><%= statement.state %></span> <%= statement.error %></span><%= link_to "Export findings", statement_path(statement) %></div><% end %>
+    </section>
+  </div>
+</div>
+<section class="panel"><div class="panel-header"><h2>Reconciliation discrepancies</h2><small>Latest 25 of <%= @finding_count %></small></div>
+<% if @findings.empty? %><div class="empty">No discrepancies yet. Upload demo/dirty-statement.csv to explore reconciliation.</div><% else %>
+<div class="table-wrap"><table><thead><tr><th>Source</th><th>Reference</th><th>Finding</th><th>Detail</th></tr></thead><tbody>
+<% @findings.each do |finding| %><tr><td>Import #<%= finding.statement_row.statement_import_id %> · line <%= finding.statement_row.line_number %></td><td><%= finding.statement_row.fields["reference"] || "Invalid row" %></td><td><span class="finding-count"><%= finding.code.humanize %></span></td><td class="wrap"><%= finding.detail %></td></tr><% end %>
+</tbody></table></div><% end %></section>

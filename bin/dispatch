@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+require_relative "../config/environment"
+trap("TERM") { exit }
+trap("INT") { exit }
+loop do
+  begin
+    OutboxDispatcher.tick
+  rescue RedisClient::Error => e
+    warn "Dispatcher Redis unavailable: #{e.class}"
+  end
+  # Polling belongs in this coordinator, never in a Sidekiq job.
+  IO.select(nil, nil, nil, 1)
+end
