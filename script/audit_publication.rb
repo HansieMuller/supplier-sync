@@ -10,8 +10,15 @@ def git(*args)
 end
 
 paths = git("ls-files", "-z").split("\0")
-forbidden = %r{(?:\A|/)(?:master\.key|demo-secrets\.json|\.env(?!\.example)|[^/]+\.(?:dump|sql|log))\z|\A(?:log|tmp|storage|coverage)/.+(?<!\.keep)\z}
-hazards = paths.grep(forbidden)
+def forbidden_path?(path)
+  return false unless path
+  name = File.basename(path)
+  env_file = (name == ".env" || name.start_with?(".env.")) && name != ".env.example"
+  secret_or_dump = name.match?(/\A(?:master\.key|demo-secrets\.json|credentials.*\.yml\.enc|[^\/]+\.(?:dump|sql|log))\z/)
+  runtime = path.match?(%r{\A(?:log|tmp|storage|coverage)/}) && name != ".keep"
+  env_file || secret_or_dump || runtime
+end
+hazards = paths.select { |path| forbidden_path?(path) }
 patterns = [
   /-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY/,
   /gh[pousr]_[A-Za-z0-9]{30,}/,
@@ -24,7 +31,11 @@ blobs = git("rev-list", "--objects", "--all").lines.filter_map do |line|
   [sha, name]
 end
 # Include staged, not-yet-committed blobs as well as reachable history.
-blobs += git("ls-files", "--stage").lines.map { |line| parts = line.split; [parts[1], parts[3..].join(" ")] }
+blobs += git("ls-files", "--stage", "-z").split("\0").map do |record|
+  metadata, name = record.split("\t", 2)
+  [metadata.split[1], name]
+end
+blobs.each { |_sha, name| hazards << "forbidden historical/staged path: #{name}" if forbidden_path?(name) }
 blobs.uniq!(&:first)
 blobs.each do |sha, name|
   data = git("cat-file", "blob", sha).b
