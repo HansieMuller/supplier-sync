@@ -69,9 +69,13 @@ begin
   check(operation.attempts.order(:number).pluck(:code).include?("Net::ReadTimeout"), "real response timeout recorded")
   stats = SupplierClient.new.request("GET", "/stats")
   check(stats["order_count"] == 1 && stats["calls"][order.idempotency_key] == 1, "supplier accepted exactly one synthetic order after one POST")
-  BoundedQueue.push(operation.id, operation.delivery_token)
-  eventually("duplicate delivery drained by real Sidekiq") { Sidekiq.redis { |redis| redis.call("LLEN", "queue:supplier") }.zero? }
-  check(operation.attempts.count == 2, "duplicate completed-job delivery creates no attempt")
+  attempts_before_duplicate = operation.attempts.count
+  duplicate_jid = SecureRandom.hex(12)
+  check(BoundedQueue.push(operation.id, operation.delivery_token, jid: duplicate_jid), "duplicate delivery admitted to Redis")
+  eventually("specific duplicate delivery completed by real Sidekiq") do
+    File.foreach(Rails.root.join("tmp/smoke-sidekiq.log")).any? { |line| line.include?("jid=#{duplicate_jid}") && line.include?("done") }
+  end
+  check(operation.attempts.count == attempts_before_duplicate, "duplicate completed-job delivery creates no attempt")
   eventually("Rails HTTP receiver is ready") do
     begin
       Net::HTTP.new("127.0.0.1", 3100, nil).get("/up").code == "200"
@@ -81,6 +85,14 @@ begin
   end
   emitted = SupplierClient.new.request("POST", "/emit", { key: order.idempotency_key, id: "smoke-shipped", status: "shipped", version: 2 })
   check(emitted["receiver_status"] == 202, "simulator sent a real signed HTTP webhook")
+  supplier_order = SupplierClient.new.lookup(order.idempotency_key)
+  check(supplier_order["status"] == "shipped" && supplier_order["version"] == 2, "supplier lookup agrees with the emitted shipment version")
+  begin
+    SupplierClient.new.request("POST", "/emit", { key: order.idempotency_key, id: "smoke-conflict", status: "delivered", version: 2 })
+    raise "Supplier accepted conflicting equal-version event"
+  rescue SupplierClient::Permanent => error
+    check(error.message == "http_409", "supplier refuses conflicting equal-version shipment")
+  end
   eventually("webhook intent processed by real Sidekiq") { order.reload.state == "shipped" }
   emitted = SupplierClient.new.request("POST", "/emit", { key: order.idempotency_key, id: "smoke-shipped", status: "shipped", version: 2 })
   check(emitted["receiver_status"] == 202 && WebhookEvent.count == 1, "duplicate signed event persisted only once")

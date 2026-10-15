@@ -84,7 +84,23 @@ class SupplierSimulator
       result
     when ["POST", "/emit"]
       input = JSON.parse(request.body.read(4096))
-      order = ledger { |data| data["orders"][input.fetch("key")]&.dup }
+      unless input.is_a?(Hash) && input["id"].is_a?(String) && input["id"].match?(/\A[A-Za-z0-9-]{1,64}\z/) &&
+          %w[accepted shipped delivered].include?(input["status"]) && input["version"].is_a?(Integer) && input["version"].between?(1, 2_147_483_647)
+        return response(422, error: "invalid_event")
+      end
+      conflict = false
+      order = ledger do |data|
+        current = data["orders"][input.fetch("key")]
+        if current
+          if input["version"] > current["version"]
+            current.merge!("version" => input["version"], "status" => input["status"])
+          elsif input["version"] == current["version"] && input["status"] != current["status"]
+            conflict = true
+          end
+        end
+        current&.dup
+      end
+      return response(409, error: "version_conflict") if conflict
       return response(404, error: "unknown") unless order
       event = { id: input.fetch("id"), reference: order.fetch("reference"), status: input.fetch("status"), version: input.fetch("version") }
       raw = JSON.generate(event)

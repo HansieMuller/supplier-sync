@@ -10,10 +10,10 @@ class BoundedQueue
     return 1
   LUA
 
-  def self.push(id, delivery)
+  def self.push(id, delivery, jid: SecureRandom.hex(12))
     now = (Time.now.to_f * 1000).to_i
     payload = Sidekiq.dump_json("class" => "OperationJob", "args" => [id, delivery], "queue" => "supplier",
-      "retry" => false, "jid" => SecureRandom.hex(12), "created_at" => now, "enqueued_at" => now)
+      "retry" => false, "jid" => jid, "created_at" => now, "enqueued_at" => now)
     Sidekiq.redis { |redis| redis.call("EVAL", SCRIPT, 2, "queue:supplier", "queues", payload) == 1 }
   end
 end
