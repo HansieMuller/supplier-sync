@@ -15,6 +15,8 @@ class OperationsController < ApplicationController
   def show
     @operation = Operation.find(params[:id])
     @attempts = @operation.attempts.order(:number).limit(100)
+    @event = @operation.webhook_event
+    @matching_order = PurchaseOrder.find_by(supplier_reference: @event.payload.fetch("reference")) if @event
   end
 
   def update
