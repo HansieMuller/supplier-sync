@@ -157,6 +157,9 @@ class CompetingTransactionsTest < ActiveSupport::TestCase
     Attempt.delete_all
     Operation.delete_all
     WebhookEvent.delete_all
+    Finding.delete_all
+    StatementRow.delete_all
+    StatementImport.delete_all
     PurchaseOrder.delete_all
     CatalogueSync.delete_all
     Product.delete_all
@@ -165,6 +168,9 @@ class CompetingTransactionsTest < ActiveSupport::TestCase
     Attempt.delete_all
     Operation.delete_all
     WebhookEvent.delete_all
+    Finding.delete_all
+    StatementRow.delete_all
+    StatementImport.delete_all
     PurchaseOrder.delete_all
     CatalogueSync.delete_all
     Product.delete_all
@@ -238,6 +244,39 @@ class CompetingTransactionsTest < ActiveSupport::TestCase
     assert_equal 100, Sidekiq.redis { |redis| redis.call("LLEN", "queue:supplier") }
   ensure
     Sidekiq.redis { |redis| redis.call("DEL", "queue:supplier", "queues") }
+  end
+
+  test "competing identical webhook receipts produce one event and one intent" do
+    raw = JSON.generate(id: "concurrent-event", reference: "SUP-1", status: "shipped", version: 2)
+    ids = competing { WebhookEvent.accept!(raw).id }
+    assert_equal 1, ids.uniq.size
+    assert_equal 1, WebhookEvent.count
+    assert_equal 1, Operation.count
+  end
+
+  test "concurrent webhook versions finish at the highest version" do
+    order = PurchaseOrder.create!(idempotency_key: SecureRandom.uuid, payload: {}, total: "45.00", currency: "ZAR", state: "accepted", supplier_reference: "SUP-1", supplier_version: 1)
+    events = Queue.new
+    [2, 3].each do |version|
+      events << WebhookEvent.accept!(JSON.generate(id: "version-#{version}", reference: "SUP-1", status: version == 2 ? "shipped" : "delivered", version: version)).id
+    end
+    competing do
+      operation = WebhookEvent.find(events.pop).operation
+      delivery = SecureRandom.uuid
+      operation.update!(state: "queued", delivery_token: delivery, lease_expires_at: 1.minute.from_now)
+      OperationJob.new.perform(operation.id, delivery)
+    end
+    assert_equal "delivered", order.reload.state
+    assert_equal 3, order.supplier_version
+    assert_equal ["completed"], Operation.distinct.pluck(:state)
+  end
+
+  test "competing identical statement imports preserve one set of provenance and findings" do
+    text = "reference,status,currency,total\nSUP-999,accepted,ZAR,45.00\n"
+    ids = competing { StatementImport.process!(StringIO.new(text)).id }
+    assert_equal 1, ids.uniq.size
+    assert_equal 1, StatementRow.count
+    assert_equal 1, Finding.count
   end
 
   test "other sessions do not observe rolled-back business/outbox rows" do

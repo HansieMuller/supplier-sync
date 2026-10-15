@@ -37,7 +37,7 @@ class SupplierClient
   def request(method, path, body = nil, key: nil, missing: false)
     http = Net::HTTP.new("127.0.0.1", DemoConfig.port("SUPPLIER_PORT", 4567), nil)
     http.open_timeout = 0.5
-    http.read_timeout = 0.25
+    http.read_timeout = path == "/emit" ? 2 : 0.25
     http.write_timeout = 0.5
     http.max_retries = 0
     req = Net::HTTPGenericRequest.new(method, !body.nil?, true, path)

@@ -1,5 +1,9 @@
 ENV["RAILS_ENV"] ||= "test"
-ENV["REDIS_URL"] ||= "redis://127.0.0.1:6379/13"
+require_relative "../config/boot"
+require "uri"
+redis_uri = URI(ENV.fetch("REDIS_URL", "redis://127.0.0.1:6379/13"))
+redis_uri.path = "/13"
+ENV["REDIS_URL"] = redis_uri.to_s
 require_relative "../config/environment"
 require "rails/test_help"
 require "rack/test"

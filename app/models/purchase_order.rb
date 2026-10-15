@@ -18,9 +18,4 @@ class PurchaseOrder < ApplicationRecord
     end
   end
 
-  def submit!
-    result = SupplierClient.new.lookup(idempotency_key) || SupplierClient.new.submit(idempotency_key, payload)
-    SupplierClient.new.validate_order!(result, payload)
-    update!(state: result.fetch("status"), supplier_reference: result.fetch("reference"), supplier_version: result.fetch("version"))
-  end
 end

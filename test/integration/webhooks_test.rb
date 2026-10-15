@@ -75,6 +75,9 @@ class WebhooksTest < ActionDispatch::IntegrationTest
     run_event(old)
     assert_equal "ignored_old", old.reload.state
     assert_equal "delivered", order.reload.state
+    same = WebhookEvent.accept!(event_body(id: "evt-same", version: 3, status: "delivered"))
+    assert_equal "completed", run_event(same).state
+    assert_equal "ignored_duplicate_version", same.reload.state
     conflict = WebhookEvent.accept!(event_body(id: "evt-conflict", version: 3, status: "shipped"))
     assert_equal "manual_review", run_event(conflict).state
     assert_equal "delivered", order.reload.state

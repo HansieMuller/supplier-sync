@@ -1,6 +1,6 @@
 require "sidekiq"
 
-# All producers use one atomic Redis admission check, including replacement deliveries.
+# Application producers use one atomic Redis admission check, including replacement deliveries.
 # Only Sidekiq's open JSON job protocol is used; PostgreSQL remains the completion authority.
 class BoundedQueue
   SCRIPT = <<~LUA.freeze

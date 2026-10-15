@@ -58,7 +58,7 @@ class StatementImport < ApplicationRecord
         row.flag!("invalid_status", "Unsupported supplier status") unless %w[accepted shipped delivered].include?(status)
         row.flag!("invalid_currency", "Unsupported currency") unless %w[ZAR USD EUR].include?(currency)
         decimal_valid = total.match?(/\A(?:0|[1-9][0-9]{0,9})\.[0-9]{2}\z/)
-        row.flag!("invalid_total", "Expected a positive decimal with two places") unless decimal_valid
+        row.flag!("invalid_total", "Expected a nonnegative decimal with two places") unless decimal_valid
         if seen[reference] && seen[reference][:fields] != fields
           row.flag!("conflicting_duplicate", "Conflicts with source line #{seen[reference][:line]}")
         end

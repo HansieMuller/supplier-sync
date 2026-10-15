@@ -1,23 +1,27 @@
 require "test_helper"
 
 class SupplierIntegrationTest < HttpSupplierTest
+  def submit(order)
+    client = SupplierClient.new
+    result = client.lookup(order.idempotency_key) || client.submit(order.idempotency_key, order.payload)
+    client.validate_order!(result, order.payload)
+  end
+
   test "catalogue pages and stable order lookup use actual HTTP" do
     sync = CatalogueSync.create!
     sync.run!
     assert_equal "completed", sync.reload.state
     assert_equal 3, Product.count
     order = PurchaseOrder.place!(product: Product.first, quantity: 2)
-    order.submit!
-    reference = order.supplier_reference
-    order.submit!
-    assert_equal reference, order.reload.supplier_reference
+    reference = submit(order).fetch("reference")
+    assert_equal reference, submit(order).fetch("reference")
     assert_equal 1, SupplierClient.new.request("GET", "/stats")["order_count"]
     assert_equal "90.0", order.payload["total"]
   end
 
   test "same key with different payload is rejected by the supplier" do
     order = PurchaseOrder.place!(product: product, quantity: 1)
-    order.submit!
+    submit(order)
     error = assert_raises(SupplierClient::Permanent) { SupplierClient.new.submit(order.idempotency_key, order.payload.merge("quantity" => 2)) }
     assert_equal "http_409", error.message
   end
@@ -62,7 +66,7 @@ class SupplierIntegrationTest < HttpSupplierTest
 
   test "validation errors remain permanent" do
     order = PurchaseOrder.place!(product: product, quantity: 1, scenario: "validation")
-    assert_raises(SupplierClient::Permanent) { order.submit! }
+    assert_raises(SupplierClient::Permanent) { submit(order) }
     assert_equal 0, SupplierClient.new.request("GET", "/stats")["order_count"]
   end
 end
