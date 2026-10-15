@@ -1,6 +1,6 @@
 # SupplierSync
 
-**An AI-assisted Rails portfolio demonstration of unreliable API integration, durable background work and reconciliation.** All supplier records, products, orders and statements are fictional. This project makes no claim of real customers, production scale or professional experience.
+A Rails 8 supplier-integration demo exploring reliable background processing, API failure recovery and data reconciliation. It uses original project code and fictional fixtures.
 
 The central failure demonstration: a supplier persists an order, then delays its response beyond the HTTP timeout. SupplierSync records the uncertainty, schedules a retry and looks up the original idempotency key. It recovers the supplier reference without making a second submission.
 
@@ -8,14 +8,14 @@ The central failure demonstration: a supplier persists an order, then delays its
 
 ## Run locally
 
-The full implementation is on `feat/reliable-supplier-integration` until its review PR is merged. `main` intentionally contains the minimal runnable scaffold.
+The complete demo is available on `main`.
 
 Prerequisites: Git, Docker Compose, Ruby **4.0.7** and Bundler. macOS and Linux are the intended development environments. No paid accounts or external credentials are required.
 
 ```sh
 git clone https://github.com/HansieMuller/supplier-sync.git
 cd supplier-sync
-git switch feat/reliable-supplier-integration
+git switch main
 ruby -v                         # must be 4.0.7
 bundle install
 docker compose up -d --wait
@@ -123,8 +123,12 @@ Statement uploads are evidence snapshots and never update orders. UTF-8 CSV has 
 
 The hardest tradeoffs are documented in [design decisions](docs/design-decisions.md). The test map names exact scenarios and executable commands; [verification evidence](docs/verification.md) distinguishes local runs from hosted CI.
 
+## Development
+
+Developed with AI-assisted tooling. This is a portfolio demo, not a production customer deployment or evidence of operating scale.
+
 ## Limits before public deployment
 
 This is local educational software, not deployment-ready infrastructure. Further work would include independent security review, real user/session/role management, TLS and credential rotation, ingress/body/rate limits (including chunked uploads), audit retention and backups, operational alerting, provider retention/SLA confirmation and infrastructure hardening. The dev simulator trusts a fictional single-supplier contract and uses a single-host file ledger; it is not a production provider implementation. No load/chaos campaign, HA failover or production-scale claim is established. The bounded listings intentionally show recent records without a full search/archive UI. Statement imports run synchronously under strict small-file limits.
 
-Do not attach this to applications until the code and failure demonstrations receive an independent review. The implementation PR remains open; nothing is automatically merged or deployed.
+Do not attach this to applications until the code and failure demonstrations receive an independent review. The implementation is merged into `main`; no deployment is configured.
