@@ -1,4 +1,5 @@
 class PurchaseOrder < ApplicationRecord
+  has_one :operation
   attr_readonly :idempotency_key, :payload, :total, :currency
   validates :idempotency_key, presence: true, uniqueness: true
   validates :state, inclusion: { in: %w[pending accepted shipped delivered failed manual_review] }

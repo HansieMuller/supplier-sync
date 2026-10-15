@@ -4,7 +4,7 @@ class WebhooksController < ActionController::Base
 
   def create
     raw = request.body.read(32_769)
-    return head :payload_too_large if raw.bytesize > 32_768
+    return head :content_too_large if raw.bytesize > 32_768
     return head :unauthorized unless WebhookSignature.valid?(raw, request.headers["X-Supplier-Timestamp"], request.headers["X-Supplier-Signature"])
     WebhookEvent.accept!(raw)
     head :accepted

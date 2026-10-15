@@ -3,7 +3,7 @@ Rails.application.routes.draw do
   root "dashboard#show"
   post "webhooks/supplier", to: "webhooks#create"
   resources :statements, only: [:create, :show]
-  resources :operations, only: :update
+  resources :operations, only: [:show, :update]
   resources :orders, only: :create
   resources :catalogue_syncs, only: :create
 end

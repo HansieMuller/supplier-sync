@@ -1,28 +1,28 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title><%= content_for(:title) || "Supplier Sync" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Supplier Sync">
-    <meta name="mobile-web-app-capable" content="yes">
-    <%= csrf_meta_tags %>
-    <%= csp_meta_tag %>
-
-    <%= yield :head %>
-
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app %>
-  </head>
-
-  <body>
-    <%= yield %>
-  </body>
+<html lang="en">
+<head>
+  <title><%= content_for(:title) || "SupplierSync · Operations" %></title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag :app %>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="<%= root_path %>"><span class="brand-icon">S</span>SupplierSync</a>
+    <span class="nav-label">WORKSPACE</span>
+    <%= link_to "Overview", root_path, class: "nav-item" %>
+    <%= link_to "Operations", root_path(anchor: "operations"), class: "nav-item" %>
+    <%= link_to "Reconciliation", root_path(anchor: "reconciliation"), class: "nav-item" %>
+    <div class="sidebar-note"><span class="live-dot"></span> Local demonstration<br><small>Fictional supplier · Synthetic data</small></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><span>OPERATIONS CONSOLE</span><span class="environment">DEMO / <%= Rails.env.upcase %></span></header>
+    <main>
+      <% flash.each do |type, message| %><div class="notice <%= type %>" role="status"><%= message %></div><% end %>
+      <%= yield %>
+      <footer>AI-assisted portfolio demonstration. No real customers, transactions or production claims.</footer>
+    </main>
+  </div>
+</body>
 </html>
