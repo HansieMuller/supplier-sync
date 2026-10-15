@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+require_relative "../config/environment"
+abort "Development/test only" unless Rails.env.development? || Rails.env.test?
+order = PurchaseOrder.find(Integer(ARGV.fetch(0)))
+result = SupplierClient.new.request("POST", "/emit", { key: order.idempotency_key, id: SecureRandom.uuid,
+  status: "shipped", version: order.supplier_version + 1 })
+puts "Signed webhook receiver status: #{result.fetch('receiver_status')}"

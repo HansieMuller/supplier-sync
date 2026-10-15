@@ -1,0 +1,16 @@
+<p><%= link_to "← Integration overview", root_path %></p>
+<div class="heading"><div><div class="eyebrow">OPERATION #<%= @operation.id %></div><h1><%= @operation.kind.humanize %></h1><p class="subtitle">Durable intent, delivery claims and recorded attempts.</p></div><span class="badge <%= @operation.state %>"><%= @operation.state.humanize %></span></div>
+<section class="panel"><div class="panel-body detail-grid">
+  <div><div class="detail-label">CREATED</div><%= @operation.created_at.utc.iso8601 %></div>
+  <div><div class="detail-label">ATTEMPT BUDGET</div><%= @operation.cycle_attempts %> / <%= Operation::MAX_ATTEMPTS %> this cycle · <%= @operation.attempt_count %> total</div>
+  <div><div class="detail-label">OPERATOR RETRIES</div><%= @operation.operator_retries %> / 3</div>
+  <div><div class="detail-label">NEXT ATTEMPT</div><%= @operation.state == "retry_wait" ? @operation.next_attempt_at.utc.iso8601 : "—" %></div>
+  <div><div class="detail-label">LAST ERROR</div><%= @operation.last_error || "—" %></div>
+  <div><div class="detail-label">LEASE EXPIRES</div><%= @operation.lease_expires_at&.utc&.iso8601 || "—" %></div>
+</div></section>
+<% if @operation.purchase_order %><section class="panel"><div class="panel-header"><h2>Order identity</h2><span><%= @operation.purchase_order.supplier_reference || "Awaiting supplier" %></span></div><div class="panel-body"><div class="detail-label">IMMUTABLE IDEMPOTENCY KEY</div><p class="key"><%= @operation.purchase_order.idempotency_key %></p><pre><%= JSON.pretty_generate(@operation.purchase_order.payload) %></pre></div></section><% end %>
+<section class="panel"><div class="panel-header"><h2>Attempt timeline</h2><small>Oldest first · Latest 100</small></div>
+<% if @attempts.empty? %><div class="empty">Waiting for a dispatcher and Sidekiq job to claim this operation.</div><% else %><div class="table-wrap"><table><thead><tr><th>Attempt</th><th>Started (UTC)</th><th>Outcome</th><th>Code</th><th>Finished (UTC)</th></tr></thead><tbody>
+<% @attempts.each do |attempt| %><tr><td>#<%= attempt.number %></td><td><%= attempt.started_at.utc.iso8601 %></td><td><span class="badge <%= attempt.outcome %>"><%= attempt.outcome.humanize %></span></td><td><%= attempt.code || "—" %></td><td><%= attempt.finished_at&.utc&.iso8601 || "In progress" %></td></tr><% end %>
+</tbody></table></div><% end %></section>
+<% if %w[failed manual_review].include?(@operation.state) %><div class="recovery-note"><strong>Review the cause before retrying.</strong> A retry preserves the operation, order key and payload. It grants another bounded budget.</div><%= button_to "Schedule safe retry", operation_path(@operation), method: :patch, disabled: @operation.operator_retries >= 3 %><% end %>

@@ -1,2 +1,32 @@
 #!/usr/bin/env ruby
-exec "./bin/rails", "server", *ARGV
+require_relative "../config/boot"
+require_relative "../lib/demo_config"
+require "socket"
+DemoConfig.load!
+ports = [DemoConfig.port("SUPPLIER_PORT", 4567), DemoConfig.port("APP_PORT", 3000)]
+ports.each do |port|
+  begin
+    socket = TCPServer.new("127.0.0.1", port)
+    socket.close
+  rescue Errno::EADDRINUSE
+    abort "Local port #{port} is already in use. Stop the conflicting service first."
+  end
+end
+ENV["PORT"] = ports.last.to_s
+children = []
+stop = -> { children.each { |pid| Process.kill("TERM", -pid) rescue Errno::ESRCH } }
+trap("INT") { stop.call }
+trap("TERM") { stop.call }
+begin
+  [["supplier", ["bin/supplier"]], ["web", ["bin/rails", "server", "-b", "127.0.0.1"]],
+    ["sidekiq", ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]],
+    ["dispatcher", ["bin/dispatch"]]].each do |name, command|
+    children << Process.spawn(*command, pgroup: true)
+    puts "Started #{name}"
+  end
+  puts "Open http://127.0.0.1:#{ports.last}; credentials: bin/demo-password"
+  Process.wait
+ensure
+  stop.call
+  children.each { |pid| Process.wait(pid) rescue Errno::ECHILD }
+end
