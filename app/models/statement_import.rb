@@ -21,7 +21,7 @@ class StatementImport < ApplicationRecord
     end
     raise InvalidFile, "Empty file" if bytes.zero?
     io.rewind
-    import = create_or_find_by!(digest: digest.hexdigest) { |record| record.filename = File.basename(filename.to_s).first(100).presence || "statement.csv" }
+    import = create_or_find_by!(digest: digest.hexdigest) { |record| record.filename = File.basename(filename.to_s).encode("UTF-8", invalid: :replace, undef: :replace, replace: "?").gsub(/[\x00-\x1F\x7F]/, "?").first(100).presence || "statement.csv" }
     import.with_lock do
       return import unless import.state == "processing"
       begin
@@ -85,6 +85,7 @@ class StatementImport < ApplicationRecord
     raise InvalidFile, "Line #{number} exceeds 2048 bytes" if raw.bytesize > MAX_LINE
     line = raw.dup.force_encoding(Encoding::UTF_8)
     raise InvalidFile, "Line #{number} is not valid UTF-8" unless line.valid_encoding?
+    raise InvalidFile, "Line #{number} contains a NUL byte" if line.include?("\x00")
     line
   end
 end

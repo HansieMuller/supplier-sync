@@ -4,8 +4,10 @@ class WebhookEvent < ApplicationRecord
   has_one :operation
 
   def self.accept!(raw)
-    payload = JSON.parse(raw)
-    unless payload.is_a?(Hash) && payload["id"].to_s.match?(/\A[A-Za-z0-9-]{1,64}\z/) &&
+    utf8 = raw.dup.force_encoding(Encoding::UTF_8)
+    raise Invalid, "invalid_encoding" unless utf8.valid_encoding?
+    payload = JSON.parse(utf8)
+    unless payload.is_a?(Hash) && payload.keys.sort == %w[id reference status version] && payload["id"].is_a?(String) && payload["reference"].is_a?(String) && payload["id"].match?(/\A[A-Za-z0-9-]{1,64}\z/) &&
         payload["reference"].to_s.match?(/\ASUP-[0-9]{1,10}\z/) && %w[accepted shipped delivered].include?(payload["status"]) &&
         payload["version"].is_a?(Integer) && payload["version"].between?(1, 2_147_483_647)
       raise Invalid, "invalid_event"

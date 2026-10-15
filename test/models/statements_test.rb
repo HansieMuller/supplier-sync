@@ -50,6 +50,17 @@ class StatementsTest < ActiveSupport::TestCase
     assert_equal "failed", import("wrong,headers\n").state
   end
 
+  test "NUL input fails explicitly and repeating it preserves the failed import" do
+    text = HEADER + "SUP-1,accepted,ZAR,45.00\x00\n"
+    statement = import(text)
+    assert_equal "failed", statement.state
+    assert_includes statement.error, "NUL"
+    assert_equal 0, statement.statement_rows.count
+    assert_no_difference ["StatementImport.count", "Finding.count"] do
+      assert_equal statement.id, import(text).id
+    end
+  end
+
   test "CSV formula protection includes whitespace and control prefixes" do
     ["=1", "+1", "-1", "@SUM(1)", "  =1", "\t=1", "\r=1", "\n=1"].each do |value|
       assert_equal "'#{value}", StatementExport.cell(value)

@@ -37,6 +37,19 @@ class WebhooksTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "wrong field types, invalid encoding and unknown fields cannot reach PostgreSQL" do
+    [true, false, 123, nil].each do |id|
+      signed_post(JSON.generate(id: id, reference: "SUP-1", status: "shipped", version: 2))
+      assert_response :unprocessable_entity
+    end
+    signed_post(event_body.sub("evt-1", "evt-\xFF".b))
+    assert_response :bad_request # Rack rejects invalid UTF-8 before controller dispatch.
+    assert_raises(WebhookEvent::Invalid) { WebhookEvent.accept!(event_body.sub("evt-1", "evt-\xFF".b)) }
+    signed_post(JSON.generate(JSON.parse(event_body).merge("extra" => "\u0000")))
+    assert_response :unprocessable_entity
+    assert_equal 0, WebhookEvent.count
+  end
+
   test "acceptance persists event and intent before acknowledgement and duplicate ids cannot change payload" do
     raw = event_body
     assert_difference ["WebhookEvent.count", "Operation.count"], 1 do
