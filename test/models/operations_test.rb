@@ -8,6 +8,14 @@ class OperationsTest < HttpSupplierTest
     operation.reload
   end
 
+  test "valid product prices and quantities cannot overflow the order decimal total" do
+    selected_product = product
+    selected_product.update!(price: "9999999999.99")
+    assert_no_difference ["PurchaseOrder.count", "Operation.count"] do
+      assert_raises(ArgumentError) { PurchaseOrder.place!(product: selected_product, quantity: 2) }
+    end
+  end
+
   test "business row and outbox intent rollback together" do
     assert_no_difference ["PurchaseOrder.count", "Operation.count"] do
       PurchaseOrder.transaction do
