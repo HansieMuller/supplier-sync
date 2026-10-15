@@ -68,7 +68,16 @@ begin
   check(order.reload.state == "accepted", "order accepted with a supplier reference")
   check(operation.attempts.order(:number).pluck(:code).include?("Net::ReadTimeout"), "real response timeout recorded")
   stats = SupplierClient.new.request("GET", "/stats")
-  check(stats["order_count"] == 1 && stats["calls"][order.idempotency_key] == 1, "supplier accepted exactly one synthetic order after one POST")
+  check(stats.fetch("order_count") == 1, "supplier ledger contains one accepted synthetic order")
+  check(stats.fetch("order_posts").fetch(order.idempotency_key) == 1, "supplier received one order POST, counting accepted-key replays")
+  check(stats.fetch("order_lookups").fetch(order.idempotency_key) == 2, "two lookup requests independently show lookup-before-submit and recovery lookup")
+  replay_key = SecureRandom.uuid
+  replay_payload = order.payload.merge("scenario" => "normal")
+  first = SupplierClient.new.submit(replay_key, replay_payload)
+  replay = SupplierClient.new.submit(replay_key, replay_payload)
+  stats = SupplierClient.new.request("GET", "/stats")
+  check(first.fetch("reference") == replay.fetch("reference"), "two real replay POSTs return the same supplier reference")
+  check(stats.fetch("order_count") == 2 && stats.fetch("order_posts").fetch(replay_key) == 2, "replay probe adds one supplier order while counting both received POSTs")
   attempts_before_duplicate = operation.attempts.count
   duplicate_jid = SecureRandom.hex(12)
   check(BoundedQueue.push(operation.id, operation.delivery_token, jid: duplicate_jid), "duplicate delivery admitted to Redis")

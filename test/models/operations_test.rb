@@ -32,11 +32,17 @@ class OperationsTest < HttpSupplierTest
     assert_equal "retry_wait", operation.state
     assert_equal "Net::ReadTimeout", operation.last_error
     assert_equal "pending", order.reload.state
+    before_recovery = SupplierClient.new.request("GET", "/stats")
+    assert_equal 1, before_recovery.fetch("order_count")
+    assert_equal 1, before_recovery.fetch("order_posts").fetch(order.idempotency_key)
+    assert_equal 1, before_recovery.fetch("order_lookups").fetch(order.idempotency_key)
     dispatch_and_run(operation)
     assert_equal "completed", operation.state
     assert_equal "accepted", order.reload.state
-    assert_equal 1, SupplierClient.new.request("GET", "/stats")["order_count"]
-    assert_equal 1, SupplierClient.new.request("GET", "/stats")["calls"][order.idempotency_key]
+    after_recovery = SupplierClient.new.request("GET", "/stats")
+    assert_equal 1, after_recovery.fetch("order_count")
+    assert_equal 1, after_recovery.fetch("order_posts").fetch(order.idempotency_key)
+    assert_equal 2, after_recovery.fetch("order_lookups").fetch(order.idempotency_key)
     assert_equal %w[retry_wait completed], operation.attempts.order(:number).pluck(:outcome)
   end
 
@@ -109,6 +115,7 @@ class OperationsTest < HttpSupplierTest
     end
     dispatch_and_run(operation)
     assert_equal "completed", operation.state
+    assert_equal 2, SupplierClient.new.request("GET", "/stats").fetch("order_posts").fetch(order.idempotency_key)
     order = PurchaseOrder.place!(product: Product.first, quantity: 1, scenario: "validation")
     operation = Operation.find_by!(purchase_order: order)
     dispatch_and_run(operation)

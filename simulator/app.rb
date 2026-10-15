@@ -26,7 +26,11 @@ class SupplierSimulator
     File.open(@path, File::RDWR | File::CREAT, 0o600) do |file|
       file.flock(File::LOCK_EX)
       raw = file.read
-      data = raw.empty? ? { "orders" => {}, "calls" => {}, "payloads" => {} } : JSON.parse(raw)
+      data = raw.empty? ? { "orders" => {}, "payloads" => {} } : JSON.parse(raw)
+      data["order_posts"] ||= {}
+      data["order_lookups"] ||= {}
+      # Retain old fault-attempt history without treating its incomplete counts as measured traffic.
+      data["scenario_attempts"] ||= data.delete("calls") || {}
       result = yield data
       file.rewind
       file.write(JSON.generate(data))
@@ -55,6 +59,8 @@ class SupplierSimulator
       return response(422, error: "invalid_key") unless key.match?(/\A[0-9a-f-]{36}\z/)
       delay = false
       result = ledger do |data|
+        # Count every authenticated, parseable object POST with a valid key, including replays/conflicts.
+        data["order_posts"][key] = data["order_posts"].fetch(key, 0) + 1
         data["payloads"] ||= {}
         if data["payloads"].key?(key) && data["payloads"][key] != payload
           next response(409, error: "key_payload_conflict")
@@ -64,11 +70,11 @@ class SupplierSimulator
         if existing
           next(existing["payload"] == payload ? response(200, existing) : response(409, error: "key_payload_conflict"))
         end
-        calls = data["calls"][key] = data["calls"].fetch(key, 0) + 1
+        attempts = data["scenario_attempts"][key] = data["scenario_attempts"].fetch(key, 0) + 1
         scenario = payload["scenario"]
         next response(422, error: "validation") if scenario == "validation"
         next response(503, error: "unavailable") if scenario == "transient"
-        next response(429, { error: "rate_limit" }, { "retry-after" => "2" }) if scenario == "rate_limit" && calls == 1
+        next response(429, { error: "rate_limit" }, { "retry-after" => "2" }) if scenario == "rate_limit" && attempts == 1
         item = PRODUCTS.find { |product| product[:sku] == payload["sku"] }
         unless item && payload["quantity"].is_a?(Integer) && (1..100).cover?(payload["quantity"]) && payload["currency"] == item[:currency] && payload["total"].is_a?(String) && payload["total"].match?(/\A[0-9]{1,10}\.[0-9]{1,2}\z/) && BigDecimal(payload["total"]) == BigDecimal(item[:price]) * payload["quantity"]
           next response(422, error: "invalid_order")
@@ -114,14 +120,17 @@ class SupplierSimulator
       result = http.post("/webhooks/supplier", raw, { "Content-Type" => "application/json", "X-Supplier-Timestamp" => timestamp, "X-Supplier-Signature" => signature })
       response(200, receiver_status: result.code.to_i)
     when ["POST", "/reset"]
-      ledger { |data| data.replace({ "orders" => {}, "calls" => {}, "payloads" => {} }) }
+      ledger { |data| data.replace({ "orders" => {}, "payloads" => {}, "order_posts" => {}, "order_lookups" => {}, "scenario_attempts" => {} }) }
       response(200, status: "reset")
     when ["GET", "/stats"]
-      ledger { |data| response(200, order_count: data["orders"].size, calls: data["calls"]) }
+      ledger { |data| response(200, order_count: data["orders"].size, order_posts: data["order_posts"], order_lookups: data["order_lookups"]) }
     else
       if request.get? && request.path_info.start_with?("/orders/")
         key = request.path_info.delete_prefix("/orders/")
-        ledger { |data| data["orders"][key] ? response(200, data["orders"][key]) : response(404, error: "unknown") }
+        ledger do |data|
+          data["order_lookups"][key] = data["order_lookups"].fetch(key, 0) + 1
+          data["orders"][key] ? response(200, data["orders"][key]) : response(404, error: "unknown")
+        end
       else
         response(404, error: "unknown")
       end

@@ -27,6 +27,8 @@ bin/dev
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000). In another terminal run `bin/demo-password`; log in as `operator` with the generated password. Secrets live only in ignored `tmp/demo-secrets.json` (mode 0600). Never commit that file. `bin/dev` starts Rails, the HTTP supplier, open-source Sidekiq and the polling dispatcher; Ctrl-C stops its children. Refresh pages to see new state.
 
+Select **Need attention** or **Operations** to review failed/manual-review work, including exceptions older than the dashboard's recent activity. The list shows 20 at a time; **Older exceptions** continues through the outstanding work. Webhook detail shows the immutable event, receipt/processing result and matching local order version. After reviewing the cause, **Schedule safe retry** reuses the same operation and signed event with the existing finite retry budget.
+
 Compose runs only PostgreSQL and Redis, with loopback port bindings and persistent local volumes. Its PostgreSQL trust authentication is exclusively for this local demo. It does not deploy the app. A running native PostgreSQL/Redis installation can also be used; set PGHOST/PGPORT/PGUSER and REDIS_URL accordingly. Use dedicated Redis databases.
 
 | Component | Pinned version |
@@ -57,6 +59,8 @@ Run these with the same PG*/REDIS_URL environment variables as setup:
 To reset: stop `bin/dev`, start `bin/supplier` alone in another terminal, then run `bin/rails demo:reset`. Stop the standalone supplier and restart `bin/dev`. This deletes only this demo's application records and supplier ledger. It does not delete Docker volumes. Resetting one side alone breaks the demo's retained-idempotency assumption. The catalogue seed runs through the queue after restart.
 
 Separate process commands are `bin/supplier`, `bin/rails server -b 127.0.0.1`, `bundle exec sidekiq -C config/sidekiq.yml` and `bin/dispatch`. APP_PORT/PORT default to 3000; SUPPLIER_PORT defaults to 4567. Only ports are configurable for the provider: HTTP always targets literal `127.0.0.1`, disables environment proxies and follows no redirects. Fault controls are development/test only.
+
+The authenticated simulator `/stats` reports ledger `order_count`, per-key `order_posts` and `order_lookups`. POSTs count authenticated requests with a valid key and a parseable JSON object, including accepted-key replays, payload conflicts and scenario rejections. Lookups count GETs including missing keys. Counters start when initialized or reset; they do not reconstruct traffic from an older ledger. Smoke uses a reset, isolated ledger and asserts these three measurements separately.
 
 Tests force Redis database 13 on the configured Redis endpoint. Smoke forces database 14 (SMOKE_REDIS_URL can choose its endpoint) and the named `supplier_sync_smoke` database. It rejects DATABASE_URL and owns only its child processes. Smoke requires free loopback ports 3100 and 4569. Do not share these dedicated test databases with other applications. Logs stay in ignored `tmp/` and `log/`.
 
@@ -129,6 +133,6 @@ Developed with AI-assisted tooling. This is a portfolio demo, not a production c
 
 ## Limits before public deployment
 
-This is local educational software, not deployment-ready infrastructure. Further work would include independent security review, real user/session/role management, TLS and credential rotation, ingress/body/rate limits (including chunked uploads), audit retention and backups, operational alerting, provider retention/SLA confirmation and infrastructure hardening. The dev simulator trusts a fictional single-supplier contract and uses a single-host file ledger; it is not a production provider implementation. No load/chaos campaign, HA failover or production-scale claim is established. The bounded listings intentionally show recent records without a full search/archive UI. Statement imports run synchronously under strict small-file limits.
+This is local educational software, not deployment-ready infrastructure. Further work would include independent security review, real user/session/role management, TLS and credential rotation, ingress/body/rate limits (including chunked uploads), audit retention and backups, operational alerting, provider retention/SLA confirmation and infrastructure hardening. The dev simulator trusts a fictional single-supplier contract and uses a single-host file ledger; it is not a production provider implementation. No load/chaos campaign, HA failover or production-scale claim is established. Dashboard listings show recent records; the attention list pages through outstanding exceptions, without a full search/archive UI. Statement imports run synchronously under strict small-file limits.
 
-Do not attach this to applications until the code and failure demonstrations receive an independent review. The implementation is merged into `main`; no deployment is configured.
+A supplied independent source audit reviewed `main` at `e3d322e` and identified the catalogue boundary and POST-count evidence defects, plus two operator-review improvements. The targeted corrections have regression and browser evidence in [verification notes](docs/verification.md); final review of the corrected code and failure demonstrations remains pending before application use. This is not external certification or production approval. No deployment is configured.

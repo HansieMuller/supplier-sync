@@ -5,7 +5,7 @@
 <div class="stats">
   <div class="stat"><div class="stat-label">Purchase orders</div><div class="stat-number"><%= @order_count %></div><div class="stat-caption">Fictional orders in this environment</div></div>
   <div class="stat"><div class="stat-label">Completed operations</div><div class="stat-number"><%= @counts.fetch("completed", 0) %></div><div class="stat-caption">Confirmed in PostgreSQL</div></div>
-  <div class="stat"><div class="stat-label">Need attention</div><div class="stat-number"><%= @counts.values_at("failed", "manual_review").compact.sum %></div><div class="stat-caption">Failed or awaiting manual review</div></div>
+  <%= link_to operations_path, class: "stat attention-link" do %><div class="stat-label">Need attention</div><div class="stat-number"><%= @counts.values_at("failed", "manual_review").compact.sum %></div><div class="stat-caption">Review failed and manual-review operations →</div><% end %>
   <div class="stat"><div class="stat-label">Statement findings</div><div class="stat-number"><%= @finding_count %></div><div class="stat-caption">Discrepancies preserved as evidence</div></div>
 </div>
 <div class="layout-grid">

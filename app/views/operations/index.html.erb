@@ -1,0 +1,23 @@
+<p><%= link_to "← Integration overview", root_path %></p>
+<div class="heading"><div><div class="eyebrow">SUPPLIER OPERATIONS</div><h1>Need attention</h1><p class="subtitle">Failed and manual-review operations, including older exceptions.</p></div></div>
+<section class="panel">
+  <div class="panel-header"><h2>Outstanding exceptions</h2><small>Newest first · Up to 20 per page</small></div>
+  <% if @operations.empty? %>
+    <div class="empty"><%= params.key?(:before) ? "No older operations need attention." : "No operations need attention." %></div>
+  <% else %>
+    <div class="table-wrap"><table><thead><tr><th>Operation</th><th>State</th><th>Attempts</th><th>Last error</th></tr></thead><tbody>
+      <% @operations.each do |operation| %>
+        <tr>
+          <td><%= link_to "##{operation.id} · #{operation.kind.humanize}", operation_path(operation) %></td>
+          <td><span class="badge <%= operation.state %>"><%= operation.state.humanize %></span></td>
+          <td><%= operation.attempt_count %></td>
+          <td class="wrap"><%= operation.last_error || "—" %></td>
+        </tr>
+      <% end %>
+    </tbody></table></div>
+  <% end %>
+</section>
+<nav class="pagination" aria-label="Exception pages">
+  <% if params.key?(:before) %><%= link_to "Newest exceptions", operations_path %><% end %>
+  <% if @has_older %><%= link_to "Older exceptions →", operations_path(before: @operations.last.id), rel: "next" %><% end %>
+</nav>

@@ -26,6 +26,31 @@ class SupplierIntegrationTest < HttpSupplierTest
     assert_equal "http_409", error.message
   end
 
+  test "two identical order POSTs count two requests but create one supplier order" do
+    order = PurchaseOrder.place!(product: product, quantity: 1)
+    client = SupplierClient.new
+    first = client.submit(order.idempotency_key, order.payload)
+    replay = client.submit(order.idempotency_key, order.payload)
+    assert_equal first.fetch("reference"), replay.fetch("reference")
+    stats = client.request("GET", "/stats")
+    assert_equal 1, stats.fetch("order_count")
+    assert_equal 2, stats.fetch("order_posts").fetch(order.idempotency_key)
+    assert_empty stats.fetch("order_lookups")
+  end
+
+  test "new traffic counters preserve a retained ledger's rate-limit-once attempt" do
+    order = PurchaseOrder.place!(product: product, quantity: 1, scenario: "rate_limit")
+    # Prior simulator ledgers counted only scenario attempts, not accepted-key replays.
+    SupplierSimulator.new(path: Rails.root.join("tmp/test-supplier.json")).ledger do |data|
+      data.replace("orders" => {}, "payloads" => { order.idempotency_key => order.payload }, "calls" => { order.idempotency_key => 1 })
+    end
+    result = SupplierClient.new.submit(order.idempotency_key, order.payload)
+    assert_match(/\ASUP-[0-9]+\z/, result.fetch("reference"))
+    stats = SupplierClient.new.request("GET", "/stats")
+    assert_equal 1, stats.fetch("order_count")
+    assert_equal 1, stats.fetch("order_posts").fetch(order.idempotency_key)
+  end
+
   test "page checkpoint survives interruption and rejects repeated cursor" do
     first_page = { "items" => [{ "sku" => "DEMO-001", "name" => "Notebook", "price" => "45.00", "currency" => "ZAR" }], "next_cursor" => "page-2" }
     client = Object.new

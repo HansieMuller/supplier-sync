@@ -9,6 +9,25 @@
   <div><div class="detail-label">LEASE EXPIRES</div><%= @operation.lease_expires_at&.utc&.iso8601 || "—" %></div>
 </div></section>
 <% if @operation.purchase_order %><section class="panel"><div class="panel-header"><h2>Order identity</h2><span><%= @operation.purchase_order.supplier_reference || "Awaiting supplier" %></span></div><div class="panel-body"><div class="detail-label">IMMUTABLE IDEMPOTENCY KEY</div><p class="key"><%= @operation.purchase_order.idempotency_key %></p><pre><%= JSON.pretty_generate(@operation.purchase_order.payload) %></pre></div></section><% end %>
+<% if @event %>
+<section class="panel" id="webhook-context" aria-labelledby="webhook-heading">
+  <div class="panel-header"><h2 id="webhook-heading">Webhook event</h2><small>Read-only signed subject</small></div>
+  <div class="panel-body detail-grid">
+    <div><div class="detail-label">Event ID</div><span class="key"><%= @event.event_key %></span></div>
+    <div><div class="detail-label">Supplier reference</div><%= @event.payload.fetch("reference") %></div>
+    <div><div class="detail-label">Incoming status</div><%= @event.payload.fetch("status").humanize %></div>
+    <div><div class="detail-label">Incoming version</div><%= @event.payload.fetch("version") %></div>
+    <div><div class="detail-label">Receipt state</div>Persisted · <%= @event.created_at.utc.iso8601 %></div>
+    <div><div class="detail-label">Processing result</div><%= @event.state.humanize %></div>
+    <% if @matching_order %>
+      <div><div class="detail-label">Matching local order</div>PO-<%= @matching_order.id.to_s.rjust(4, "0") %></div>
+      <div><div class="detail-label">Current order status</div><%= @matching_order.state.humanize %></div>
+      <div><div class="detail-label">Current supplier version</div><%= @matching_order.supplier_version %></div>
+    <% end %>
+  </div>
+  <% unless @matching_order %><div class="panel-body">No local order currently matches this supplier reference. Acceptance may still need recovery; review the cause before retrying this same event.</div><% end %>
+</section>
+<% end %>
 <section class="panel"><div class="panel-header"><h2>Attempt timeline</h2><small>Oldest first · Latest 100</small></div>
 <% if @attempts.empty? %><div class="empty">Waiting for a dispatcher and Sidekiq job to claim this operation.</div><% else %><div class="table-wrap"><table><thead><tr><th>Attempt</th><th>Started (UTC)</th><th>Outcome</th><th>Code</th><th>Finished (UTC)</th></tr></thead><tbody>
 <% @attempts.each do |attempt| %><tr><td>#<%= attempt.number %></td><td><%= attempt.started_at.utc.iso8601 %></td><td><span class="badge <%= attempt.outcome %>"><%= attempt.outcome.humanize %></span></td><td><%= attempt.code || "—" %></td><td><%= attempt.finished_at&.utc&.iso8601 || "In progress" %></td></tr><% end %>

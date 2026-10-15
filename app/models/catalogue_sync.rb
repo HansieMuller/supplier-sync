@@ -30,6 +30,8 @@ class CatalogueSync < ApplicationRecord
         end
         update!(cursor: next_cursor, seen_cursors: seen_cursors + [cursor].compact, state: next_cursor ? "pending" : "completed")
       end
+      # The final permitted page can itself be terminal; only an unfinished feed hits the cap.
+      return if state == "completed"
     end
     raise SupplierClient::Permanent, "page_limit"
   rescue KeyError, ActiveRecord::RecordInvalid

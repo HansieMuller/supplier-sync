@@ -12,3 +12,5 @@ This project is original, AI-assisted educational work using fictional data.
 8. **Local security appropriate to the scope.** Generated, untracked secrets; Basic authentication over loopback; Rails CSRF on browser writes; a single scoped signed-webhook exemption; no arbitrary provider/callback URLs. This keeps the demonstration runnable without accounts, while documenting the substantial hardening needed for public hosting.
 
 Manual retry grants another finite budget without changing identity. It is not a way to fix a rejected payload; a deliberately different business order requires a new order, after the ambiguous original has been reviewed. Neither operator retries nor fresh delivery tokens imply exactly-once execution.
+
+The attention list filters only failed/manual-review operations and reads at most 21 rows to display a 20-row page plus continuation. An ID cursor avoids deep offsets; the list is live, so a concurrent completion can remove an exception between clicks. This is a focused review path, not an archive. Webhook detail loads the currently matching local order for explanation and never changes the signed subject or repairs an order.
